@@ -24,11 +24,6 @@ import mesos
 import mesos_pb2
 
 
-class Task:
-  def Task(self)
-    pass
-
-
 class LaughingExecutor(mesos.Executor):
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
       pass
