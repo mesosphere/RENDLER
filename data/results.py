@@ -23,7 +23,7 @@ class CrawlResult(Result):
 		self.links  = links
 
 class RenderResult(Result):
-	"""The result of mining a resource for links
+	"""The result of rendering a resource
 
 	RenderResult must serialize to JSON as its default representation:
 
