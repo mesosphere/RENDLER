@@ -22,7 +22,7 @@ import time
 
 import mesos
 import mesos_pb2
-
+import results
 
 class LaughingExecutor(mesos.Executor):
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
@@ -43,6 +43,13 @@ class LaughingExecutor(mesos.Executor):
             driver.sendStatusUpdate(update)
 
             # This is where one would perform the requested task.
+	          res = CrawlResult(
+	          	"1234",
+	          	"http://foo.co",
+	          	["http://foo.co/a", "http://foo.co/b"]
+	          )
+	          message = repr(res)
+            driver.sendFrameworkMessage(message)
 
             print "Sending status update..."
             update = mesos_pb2.TaskStatus()
@@ -53,7 +60,7 @@ class LaughingExecutor(mesos.Executor):
 
         thread = threading.Thread(target=run_task)
         thread.start()
-    
+
     def killTask(self, driver, taskId):
       pass
 
