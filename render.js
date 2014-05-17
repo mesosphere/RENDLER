@@ -12,6 +12,11 @@ destination = system.args[2];
 
 console.log('Rendering ' + address + ' to ' + destination);
 
+page.viewportSize = {
+    width: 1024,
+    height: 768
+};
+
 page.open(address, function() {
     page.render(destination);
     phantom.exit();

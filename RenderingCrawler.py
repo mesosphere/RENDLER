@@ -67,7 +67,7 @@ class RenderingCrawler(mesos.Scheduler):
         task.data = url
         return task
 
-    def makeRenderTask(self, url):
+    def makeRenderTask(self, url, offer):
         task = self.makeTaskPrototype(offer)
         task.name = "render_%s" % task.task_id
         task.executor.MergeFrom(self.renderExecutor)
@@ -89,6 +89,8 @@ class RenderingCrawler(mesos.Scheduler):
             # TODO: this better
             task = self.makeCrawlTask(self.crawlQueue[0], offer)
             tasks.append(task)
+
+            tasks.append(self.makeRenderTask(self.crawlQueue[0], offer))
 
             driver.launchTasks(offer.id, tasks)
 
@@ -115,7 +117,7 @@ if __name__ == "__main__":
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
-    renderExecutor.command.value = "python render-executor.py"
+    renderExecutor.command.value = "python render_executor.py"
 
     renderSource = renderExecutor.command.uris.add()
     renderSource.value = crawlSource.value
