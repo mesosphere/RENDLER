@@ -7,7 +7,7 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 # 
 # Unless required by applicable law or agreed to in writing, software
@@ -18,7 +18,11 @@
 
 import sys
 import threading
+from threading import Thread
 import time
+
+import urlparse, urllib, sys
+from bs4 import BeautifulSoup
 
 import mesos
 import mesos_pb2
@@ -42,21 +46,41 @@ class LaughingExecutor(mesos.Executor):
             update.state = mesos_pb2.TASK_RUNNING
             driver.sendStatusUpdate(update)
 
-            # This is where one would perform the requested task.
-            res = CrawlResult(
-              "1234",
-              "http://foo.co",
-              ["http://foo.co/a", "http://foo.co/b"]
-            )
-            message = repr(res)
-            driver.sendFrameworkMessage(message)
+            def crawl(url):
+                source = urllib.urlopen(url).read()
+                soup = BeautifulSoup(source)
 
-            print "Sending status update..."
-            update = mesos_pb2.TaskStatus()
-            update.task_id.value = task.task_id.value
-            update.state = mesos_pb2.TASK_FINISHED
-            driver.sendStatusUpdate(update)
-            print "Sent status update"
+                urls = []
+                try:
+                  for item in soup.find_all('a'):
+                      try:
+                          urls.append(urlparse.urljoin(url, item.get('href')))
+                      except:
+                          pass # Not a valid link
+                except:
+                  print "Could not fetch any links from html"
+                  return
+
+                # This is where one would perform the requested task.
+                res = results.CrawlResult(
+                  task.task_id.value,
+                  url,
+                  urls
+                )
+                message = repr(res)
+                driver.sendFrameworkMessage(message)
+
+                print "Sending status update..."
+                update = mesos_pb2.TaskStatus()
+                update.task_id.value = task.task_id.value
+                update.state = mesos_pb2.TASK_FINISHED
+                driver.sendStatusUpdate(update)
+                print "Sent status update"
+                return
+
+            crawlThread = Thread(target = crawl, args = ["http://mesosphere.io"])
+            crawlThread.start();
+
 
         thread = threading.Thread(target=run_task)
         thread.start()
