@@ -5,7 +5,11 @@ A rendering web crawler for Apache Mesos.
 
 ## Crawl Executor
 
+    sudo easy_install beautifulsoup4
+
 ## Render Executor
+
+    sudo brew install phantomjs
 
 ## Scheduler
 
