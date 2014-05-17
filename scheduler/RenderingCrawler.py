@@ -54,8 +54,7 @@ class RenderingCrawler(mesos.Scheduler):
                 task.task_id.value = str(tid)
                 task.slave_id.value = offer.slave_id.value
                 task.name = "task %d" % tid
-                task.uris = []
-                task.executor.MergeFrom(self.executor)
+                task.executor.MergeFrom(self.crawlExecutor)
 
                 cpus = task.resources.add()
                 cpus.name = "cpus"
@@ -87,6 +86,10 @@ if __name__ == "__main__":
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
     crawlExecutor.command.value = os.path.abspath("./crawl-executor.py")
+
+    source = crawlExecutor.command.uris.add()
+    source.value = "https://github.com/mesosphere/laughing-adventure/raw/master/executor/crawl_executor.py"
+
     crawlExecutor.name = "Crawler"
     crawlExecutor.source = "rendering-crawler"
 
