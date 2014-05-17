@@ -102,15 +102,19 @@ if __name__ == "__main__":
     crawlExecutor.executor_id.value = "crawl-executor"
     crawlExecutor.command.value = "python crawl_executor.py"
 
-    source = crawlExecutor.command.uris.add()
-    source.value = "http://downloads.mesosphere.io/demo/laughing-adventure.tgz"
+    crawlSource = crawlExecutor.command.uris.add()
+    crawlSource.value = "http://downloads.mesosphere.io/demo/laughing-adventure.tgz"
 
     crawlExecutor.name = "Crawler"
     crawlExecutor.source = "rendering-crawler"
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
-    renderExecutor.command.value = os.path.abspath("./render-executor.py")
+    renderExecutor.command.value = "python render-executor.py"
+
+    renderSource = renderExecutor.command.uris.add()
+    renderSource.value = crawlSource.value
+
     renderExecutor.name = "Renderer"
     renderExecutor.source = "rendering-crawler"
 

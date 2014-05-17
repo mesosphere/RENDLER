@@ -19,16 +19,15 @@
 import sys
 import threading
 from threading import Thread
+from subprocess import call
 import time
-
-import urlparse, urllib, sys
-from bs4 import BeautifulSoup
+import uuid
 
 import mesos
 import mesos_pb2
 import results
 
-class CrawlExecutor(mesos.Executor):
+class RenderExecutor(mesos.Executor):
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
       pass
 
@@ -40,31 +39,30 @@ class CrawlExecutor(mesos.Executor):
 
     def launchTask(self, driver, task):
         def run_task():
-            print "Running crawl task %s" % task.task_id.value
+            print "Running render task %s" % task.task_id.value
             update = mesos_pb2.TaskStatus()
             update.task_id.value = task.task_id.value
             update.state = mesos_pb2.TASK_RUNNING
             driver.sendStatusUpdate(update)
 
-            def crawl(url):
-                source = urllib.urlopen(url).read()
-                soup = BeautifulSoup(source)
+            def render(url):
+                # 1) Render picture to hash file name.
+                destination = uuid.uuid4().hex + ".png"
+                if call("phantomjs render.js " + url + " " + destination) != 0:
+                    print "Could not render " + url
+                    return
 
-                urls = []
-                try:
-                  for item in soup.find_all('a'):
-                      try:
-                          urls.append(urlparse.urljoin(url, item.get('href')))
-                      except:
-                          pass # Not a valid link
-                except:
-                  print "Could not fetch any links from html"
-                  return
+                # 2) Upload to s3.
+                s3destination = "s3://downloads.mesosphere.io/demo/artifacts/" + destination
+                if call("s3cmd put " + destination + " " + s3destination) != 0:
+                    print "Could not upload " + destination + " to " + s3destination
+                    return
 
-                res = results.CrawlResult(
-                  task.task_id.value,
-                  url,
-                  urls
+                # 3) Announce render result to framework.
+                res = RenderResult(
+                    task.task_id.value,
+                    url,
+                    s3destination
                 )
                 message = repr(res)
                 driver.sendFrameworkMessage(message)
@@ -77,7 +75,7 @@ class CrawlExecutor(mesos.Executor):
                 print "Sent status update"
                 return
 
-            crawlThread = Thread(target = crawl, args = [task.data])
+            crawlThread = Thread(target = render, args = [task.data])
             crawlThread.start();
 
 
@@ -97,6 +95,6 @@ class CrawlExecutor(mesos.Executor):
       pass
 
 if __name__ == "__main__":
-    print "Starting Launching Executor (LE)"
-    driver = mesos.MesosExecutorDriver(CrawlExecutor())
+    print "Starting Render Executor (RE)"
+    driver = mesos.MesosExecutorDriver(RenderExecutor())
     sys.exit(0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1)
