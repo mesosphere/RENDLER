@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
-    crawlExecutor.command.value = "python ./crawl_executor.py"
+    crawlExecutor.command.value = "python executor/crawl_executor.py"
 
     source = crawlExecutor.command.uris.add()
     source.value = "http://downloads.mesosphere.io/demo/laughing-adventure.tgz"
@@ -135,14 +135,16 @@ if __name__ == "__main__":
             framework,
             sys.argv[1])
 
+    # driver.run() blocks; we run it in a separate thread
     def run_driver_async():
         status = 0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1
-        driver.stop();
+        driver.stop()
         sys.exit(status)
 
     driverRunThread = Thread(target = run_driver_async, args = ())
-    driverRunThread.start();
+    driverRunThread.start()
 
+    # Listen for CTRL+D
     while True:
         line = sys.stdin.readline()
         if line:
