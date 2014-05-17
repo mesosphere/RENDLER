@@ -25,17 +25,16 @@ import mesos_pb2
 
 TOTAL_TASKS = 5
 
-TASK_CPUS = 1
+TASK_CPUS = 0.25
 TASK_MEM = 32
 
-class LaughingScheduler(mesos.Scheduler):
-    def __init__(self, executor):
-        self.executor = executor
-        self.taskData = {}
-        self.tasksLaunched = 0
-        self.tasksFinished = 0
-        self.messagesSent = 0
-        self.messagesReceived = 0
+class RenderingCrawler(mesos.Scheduler):
+    def __init__(self, crawlExecutor, renderExecutor):
+        self.crawlExecutor  = crawlExecutor
+        self.renderExecutor = renderExecutor
+        self.taskData       = {}
+        self.tasksLaunched  = 0
+        self.tasksFinished  = 0
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID [%s]" % frameworkId.value
@@ -49,13 +48,13 @@ class LaughingScheduler(mesos.Scheduler):
                 tid = self.tasksLaunched
                 self.tasksLaunched += 1
 
-                print "Accepting offer on [%s] to start task [%d]" \
-                      % (offer.hostname, tid)
+                print "Accepting offer on [%s] to start task [%d]" % (offer.hostname, tid)
 
                 task = mesos_pb2.TaskInfo()
                 task.task_id.value = str(tid)
                 task.slave_id.value = offer.slave_id.value
                 task.name = "task %d" % tid
+                task.uris = []
                 task.executor.MergeFrom(self.executor)
 
                 cpus = task.resources.add()
@@ -75,63 +74,32 @@ class LaughingScheduler(mesos.Scheduler):
 
     def statusUpdate(self, driver, update):
         print "Task [%s] is in state [%d]" % (update.task_id.value, update.state)
-
-        # Ensure the binary data came through.
-        if update.data != "data with a \0 byte":
-            print "The update data did not match!"
-            print "  Expected: 'data with a \\x00 byte'"
-            print "  Actual:  ", repr(str(update.data))
-            sys.exit(1)
-
-        if update.state == mesos_pb2.TASK_FINISHED:
-            self.tasksFinished += 1
-            if self.tasksFinished == TOTAL_TASKS:
-                print "All tasks done, waiting for final framework message"
-
-            slave_id, executor_id = self.taskData[update.task_id.value]
-
-            self.messagesSent += 1
-            driver.sendFrameworkMessage(
-                executor_id,
-                slave_id,
-                'data with a \0 byte')
+        slave_id, executor_id = self.taskData[update.task_id.value]
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
-        self.messagesReceived += 1
-
-        # The message bounced back as expected.
-        if message != "data with a \0 byte":
-            print "The returned message data did not match!"
-            print "  Expected: 'data with a \\x00 byte'"
-            print "  Actual:  ", repr(str(message))
-            sys.exit(1)
         print "Received message:", repr(str(message))
-
-        if self.messagesReceived == TOTAL_TASKS:
-            if self.messagesReceived != self.messagesSent:
-                print "Sent", self.messagesSent,
-                print "but received", self.messagesReceived
-                sys.exit(1)
-            print "All tasks done, and all messages received, exiting"
-            driver.stop()
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print "Usage: %s master" % sys.argv[0]
         sys.exit(1)
 
-    executor = mesos_pb2.ExecutorInfo()
-    executor.executor_id.value = "default"
-    executor.command.value = os.path.abspath("../LaughingExecutor.py")
-    executor.name = "Laughing Executor"
-    executor.source = "laughing-adventure"
+    crawlExecutor = mesos_pb2.ExecutorInfo()
+    crawlExecutor.executor_id.value = "crawl-executor"
+    crawlExecutor.command.value = os.path.abspath("./crawl-executor.py")
+    crawlExecutor.name = "Crawler"
+    crawlExecutor.source = "rendering-crawler"
+
+    renderExecutor = mesos_pb2.ExecutorInfo()
+    renderExecutor.executor_id.value = "render-executor"
+    renderExecutor.command.value = os.path.abspath("./render-executor.py")
+    renderExecutor.name = "Renderer"
+    renderExecutor.source = "rendering-crawler"
 
     framework = mesos_pb2.FrameworkInfo()
     framework.user = "" # Have Mesos fill in the current user.
-    framework.name = "Laughing Adventure"
+    framework.name = "rendering-crawler"
 
-    # TODO(vinod): Make checkpointing the default when it is default
-    # on the slave.
     if os.getenv("MESOS_CHECKPOINT"):
         print "Enabling checkpoint for the framework"
         framework.checkpoint = True
@@ -152,13 +120,13 @@ if __name__ == "__main__":
         credential.secret = os.getenv("DEFAULT_SECRET")
 
         driver = mesos.MesosSchedulerDriver(
-            LaughingScheduler(executor),
+            RenderingCrawler(crawlExecutor, renderExecutor),
             framework,
             sys.argv[1],
             credential)
     else:
         driver = mesos.MesosSchedulerDriver(
-            LaughingScheduler(executor),
+            RenderingCrawler(crawlExecutor, renderExecutor),
             framework,
             sys.argv[1])
 
