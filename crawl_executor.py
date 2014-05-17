@@ -78,7 +78,7 @@ class LaughingExecutor(mesos.Executor):
                 print "Sent status update"
                 return
 
-            crawlThread = Thread(target = crawl, args = ["http://mesosphere.io"])
+            crawlThread = Thread(target = crawl, args = [task.data])
             crawlThread.start();
 
 
