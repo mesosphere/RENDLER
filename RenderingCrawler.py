@@ -17,7 +17,9 @@
 # limitations under the License.
 
 import os
+import signal
 import sys
+from threading import Thread
 import time
 
 import mesos
@@ -133,9 +135,19 @@ if __name__ == "__main__":
             framework,
             sys.argv[1])
 
-    status = 0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1
+    def run_driver_async():
+        status = 0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1
+        driver.stop();
+        sys.exit(status)
 
-    # Ensure that the driver process terminates.
-    driver.stop();
+    driverRunThread = Thread(target = run_driver_async, args = ())
+    driverRunThread.start();
 
-    sys.exit(status)
+    while True:
+        line = sys.stdin.readline()
+        if line:
+            pass
+        else:
+            driver.stop()
+            print "Goodbye!"
+            sys.exit(0)
