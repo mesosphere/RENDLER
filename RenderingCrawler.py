@@ -21,6 +21,7 @@ import signal
 import sys
 from threading import Thread
 import time
+from urlparse import urlparse
 
 import mesos
 import mesos_pb2
@@ -31,6 +32,7 @@ TASK_MEM = 32
 class RenderingCrawler(mesos.Scheduler):
     def __init__(self, seedUrl, crawlExecutor, renderExecutor):
         self.seedUrl = seedUrl
+        self.seedDomain = urlparse(seedUrl).netloc
         self.crawlExecutor  = crawlExecutor
         self.renderExecutor = renderExecutor
         self.crawlQueue = [seedUrl]
@@ -71,6 +73,9 @@ class RenderingCrawler(mesos.Scheduler):
         task.executor.MergeFrom(self.renderExecutor)
         task.data = url
         return task
+
+    def matchesSeedDomain(url):
+        return urlparse(url).netloc == self.seedDomain
 
     def resourceOffers(self, driver, offers):
         print "Got %d resource offers" % len(offers)
