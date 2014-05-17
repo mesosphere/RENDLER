@@ -43,12 +43,12 @@ class LaughingExecutor(mesos.Executor):
             driver.sendStatusUpdate(update)
 
             # This is where one would perform the requested task.
-	          res = CrawlResult(
-	          	"1234",
-	          	"http://foo.co",
-	          	["http://foo.co/a", "http://foo.co/b"]
-	          )
-	          message = repr(res)
+            res = CrawlResult(
+              "1234",
+              "http://foo.co",
+              ["http://foo.co/a", "http://foo.co/b"]
+            )
+            message = repr(res)
             driver.sendFrameworkMessage(message)
 
             print "Sending status update..."
