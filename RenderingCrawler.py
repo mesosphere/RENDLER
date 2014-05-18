@@ -17,6 +17,7 @@
 # limitations under the License.
 
 from collections import deque
+import json
 import os
 import signal
 import sys
@@ -69,50 +70,65 @@ class RenderingCrawler(mesos.Scheduler):
         task = self.makeTaskPrototype(offer)
         task.name = "crawl_%s" % task.task_id
         task.executor.MergeFrom(self.crawlExecutor)
-        task.data = url
+        task.data = str(url)
         return task
 
     def makeRenderTask(self, url, offer):
         task = self.makeTaskPrototype(offer)
         task.name = "render_%s" % task.task_id
         task.executor.MergeFrom(self.renderExecutor)
-        task.data = url
+        task.data = str(url)
         return task
 
-    def matchesSeedDomain(url):
+    def matchesSeedDomain(self, url):
         return urlparse(url).netloc == self.seedDomain
 
     def resourceOffers(self, driver, offers):
         print "Got %d resource offers" % len(offers)
-
         for offer in offers:
             print "Got resource offer [%s]" % offer.id.value
-            print "Accepting offer on [%s]" % offer.hostname
 
             # TODO: this better
             tasks = []
-            task = self.makeCrawlTask(self.crawlQueue[0], offer)
-            tasks.append(task)
 
-            tasks.append(self.makeRenderTask(self.crawlQueue[0], offer))
+            if self.crawlQueue:
+                crawlTaskUrl = self.crawlQueue.popleft()
+                task = self.makeCrawlTask(crawlTaskUrl, offer)
+                tasks.append(task)
 
-            driver.launchTasks(offer.id, tasks)
+            if self.renderQueue:
+                renderTaskUrl = self.renderQueue.popleft()
+                task = self.makeRenderTask(crawlTaskUrl, offer)
+                tasks.append(task)
+
+            if tasks:
+                print "Accepting offer on [%s]" % offer.hostname
+                driver.launchTasks(offer.id, tasks)
+            else:
+                print "Declining offer on [%s]" % offer.hostname
+                driver.declineOffer(offer.id)
 
     def statusUpdate(self, driver, update):
         print "Task [%s] is in state [%d]" % (update.task_id.value, update.state)
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
-        print "Received message:", repr(str(message))
-        if (type(message) is results.CrawlResult):
-            for url in message.links:
-                self.crawlResults.append((message.url, url))
-                if matchesSeedDomain(url) and not url in self.processedURLs:
+        o = json.loads(message)
+
+        if executorId.value == crawlExecutor.executor_id.value:
+            result = results.CrawlResult(o['taskId'], o['url'], o['links'])
+            for url in result.links:
+                edge = (result.url, url)
+                print "Appending [%s] to crawl results" % repr(edge)
+                self.crawlResults.append(edge)
+                if not url in self.processedURLs: # and self.matchesSeedDomain(url):
+                    print "Enqueueing [%s]" % url
                     self.crawlQueue.append(url)
                     self.renderQueue.append(url)
-                    self.processedUrls.add(url)
+                    self.processedURLs.add(url)
 
-        elif (type(message) is results.RenderResult):
-            self.renderResults[message.url] = message.imageUrl
+        elif executorId == renderExecutor.executor_id.value:
+            result = results.RenderResult(o['taskId'], o['url'], o['imageUrl'])
+            self.renderResults[result.url] = result.imageUrl
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
