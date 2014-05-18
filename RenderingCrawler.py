@@ -12,6 +12,7 @@ from urlparse import urlparse
 import mesos
 import mesos_pb2
 import results
+import export_dot
 
 TASK_CPUS = 0.1
 TASK_MEM = 32
@@ -145,6 +146,7 @@ if __name__ == "__main__":
         print "Enabling checkpoint for the framework"
         framework.checkpoint = True
 
+    crawler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
     if os.getenv("MESOS_AUTHENTICATE"):
         print "Enabling authentication for the framework"
 
@@ -160,14 +162,15 @@ if __name__ == "__main__":
         credential.principal = os.getenv("DEFAULT_PRINCIPAL")
         credential.secret = os.getenv("DEFAULT_SECRET")
 
+
         driver = mesos.MesosSchedulerDriver(
-            RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor),
+            crawler,
             framework,
             sys.argv[2],
             credential)
     else:
         driver = mesos.MesosSchedulerDriver(
-            RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor),
+            crawler,
             framework,
             sys.argv[2])
 
@@ -187,5 +190,6 @@ if __name__ == "__main__":
             pass
         else:
             driver.stop()
+            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
             print "Goodbye!"
             sys.exit(0)
