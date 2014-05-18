@@ -6,8 +6,6 @@ import os
 import signal
 import sys
 from threading import Thread
-import time
-from urlparse import urlparse
 
 import mesos
 import mesos_pb2
@@ -20,13 +18,12 @@ TASK_MEM = 32
 class RenderingCrawler(mesos.Scheduler):
     def __init__(self, seedUrl, crawlExecutor, renderExecutor):
         self.seedUrl = seedUrl
-        self.seedDomain = urlparse(seedUrl).netloc
         self.crawlExecutor  = crawlExecutor
         self.renderExecutor = renderExecutor
         self.crawlQueue = deque([seedUrl])
         self.renderQueue = deque([seedUrl])
         self.processedURLs = set([seedUrl])
-        self.crawlResults = []
+        self.crawlResults = set([])
         self.renderResults = {}
         self.tasksCreated  = 0
         self.tasksLaunched  = 0
@@ -101,7 +98,7 @@ class RenderingCrawler(mesos.Scheduler):
             for url in result.links:
                 edge = (result.url, url)
                 print "Appending [%s] to crawl results" % repr(edge)
-                self.crawlResults.append(edge)
+                self.crawlResults.add(edge)
                 if not url in self.processedURLs:
                     print "Enqueueing [%s]" % url
                     self.crawlQueue.append(url)
@@ -161,7 +158,6 @@ if __name__ == "__main__":
         credential = mesos_pb2.Credential()
         credential.principal = os.getenv("DEFAULT_PRINCIPAL")
         credential.secret = os.getenv("DEFAULT_SECRET")
-
 
         driver = mesos.MesosSchedulerDriver(
             crawler,
