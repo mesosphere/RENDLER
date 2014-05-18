@@ -7,6 +7,8 @@ A rendering web crawler for Apache Mesos.
 
 ## Crawl Executor
 
+**Dependencies:**
+
     sudo easy_install beautifulsoup4
 
 ## Render Executor
@@ -41,6 +43,16 @@ and crawl queues.
    by the resource offer stream.  When the queues are empty, the scheduler
    declines resource offers to make them available to other frameworks running
    on the cluster.
+
+### Dot Export Script
+
+**Dependencies:**
+
+    sudo easy_install wget
+
+**Generating the final result file:**
+
+    dot -Tpdf result.dot > result.pdf
 
 ### Sample Output
 
