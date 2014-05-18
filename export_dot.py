@@ -8,7 +8,7 @@ def dot(url_list, render_map, output_file):
 
   # Download images
   for url in render_map:
-    filename = wget.download(render_map[url])  
+    filename = wget.download(render_map[url])
     url_hash = "X" + hashlib.sha256(url).hexdigest()
     f.write("  " + url_hash + "[label=\"\" image=\"" + filename + "\"];\n")
 
@@ -24,13 +24,13 @@ def dot(url_list, render_map, output_file):
   f.close()
 
   print "Results writting to " + output_file
-  pass 
+  pass
 
-dot([
-    ("http://google.com", "http://github.com"),
-    ("http://google.com", "http://yahoo.com")],
-    {
-      "http://google.com": "http://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-      "http://github.com": "http://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-      "http://yahoo.com":  "http://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-    }, "test.dot")
+# dot([
+#     ("http://google.com", "http://github.com"),
+#     ("http://google.com", "http://yahoo.com")],
+#     {
+#       "http://google.com": "http://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#       "http://github.com": "http://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#       "http://yahoo.com":  "http://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#     }, "test.dot")
