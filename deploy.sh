@@ -1,4 +1,4 @@
 #! /bin/bash
 
-tar -czf ../laughing-adventure.tgz .
-s3cmd put ../laughing-adventure.tgz s3://downloads.mesosphere.io/demo/
+tar -czf ../rendler.tgz .
+s3cmd put ../rendler.tgz s3://downloads.mesosphere.io/demo/

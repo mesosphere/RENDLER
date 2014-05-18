@@ -123,7 +123,7 @@ if __name__ == "__main__":
     crawlExecutor.command.value = "python crawl_executor.py"
 
     crawlSource = crawlExecutor.command.uris.add()
-    crawlSource.value = "http://downloads.mesosphere.io/demo/laughing-adventure.tgz"
+    crawlSource.value = "http://downloads.mesosphere.io/demo/rendler.tgz"
 
     crawlExecutor.name = "Crawler"
     crawlExecutor.source = "rendering-crawler"
