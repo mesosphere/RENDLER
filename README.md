@@ -3,6 +3,8 @@ RENDLER :interrobang:
 
 A rendering web crawler for Apache Mesos.
 
+![YES RENDLER](http://img.pandawhale.com/57451-Jim-Carrey-Riddler-upvote-gif-NVsA.gif)
+
 ## Crawl Executor
 
     sudo easy_install beautifulsoup4
@@ -39,3 +41,7 @@ and crawl queues.
    by the resource offer stream.  When the queues are empty, the scheduler
    declines resource offers to make them available to other frameworks running
    on the cluster.
+
+### Sample Output
+
+![Sample Crawl Crawl](http://downloads.mesosphere.io/demo/sample_output.png)
