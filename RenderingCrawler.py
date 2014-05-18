@@ -64,9 +64,6 @@ class RenderingCrawler(mesos.Scheduler):
         task.data = str(url)
         return task
 
-    def matchesSeedDomain(self, url):
-        return urlparse(url).netloc == self.seedDomain
-
     def resourceOffers(self, driver, offers):
         print "Got %d resource offers" % len(offers)
         for offer in offers:
@@ -104,7 +101,7 @@ class RenderingCrawler(mesos.Scheduler):
                 edge = (result.url, url)
                 print "Appending [%s] to crawl results" % repr(edge)
                 self.crawlResults.append(edge)
-                if not url in self.processedURLs: # and self.matchesSeedDomain(url):
+                if not url in self.processedURLs:
                     print "Enqueueing [%s]" % url
                     self.crawlQueue.append(url)
                     self.renderQueue.append(url)
