@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import deque
 import os
 import signal
 import sys
@@ -25,6 +26,7 @@ from urlparse import urlparse
 
 import mesos
 import mesos_pb2
+import results
 
 TASK_CPUS = 0.1
 TASK_MEM = 32
@@ -35,8 +37,11 @@ class RenderingCrawler(mesos.Scheduler):
         self.seedDomain = urlparse(seedUrl).netloc
         self.crawlExecutor  = crawlExecutor
         self.renderExecutor = renderExecutor
-        self.crawlQueue = [seedUrl]
-        self.renderQueue = [seedUrl]
+        self.crawlQueue = deque([seedUrl])
+        self.renderQueue = deque([seedUrl])
+        self.processedURLs = set([seedUrl])
+        self.crawlResults = []
+        self.renderResults = {}
         self.tasksCreated  = 0
         self.tasksLaunched  = 0
         self.tasksFinished  = 0
@@ -84,9 +89,8 @@ class RenderingCrawler(mesos.Scheduler):
             print "Got resource offer [%s]" % offer.id.value
             print "Accepting offer on [%s]" % offer.hostname
 
-            tasks = []
-
             # TODO: this better
+            tasks = []
             task = self.makeCrawlTask(self.crawlQueue[0], offer)
             tasks.append(task)
 
@@ -99,6 +103,16 @@ class RenderingCrawler(mesos.Scheduler):
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
         print "Received message:", repr(str(message))
+        if (type(message) is results.CrawlResult):
+            for url in message.links:
+                self.crawlResults.append((message.url, url))
+                if matchesSeedDomain(url) and not url in self.processedURLs:
+                    self.crawlQueue.append(url)
+                    self.renderQueue.append(url)
+                    self.processedUrls.add(url)
+
+        elif (type(message) is results.RenderResult):
+            self.renderResults[message.url] = message.imageUrl
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
