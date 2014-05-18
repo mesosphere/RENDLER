@@ -1,5 +1,5 @@
-laughing-adventure
-==================
+RENDLER
+=======
 
 A rendering web crawler for Apache Mesos.
 
