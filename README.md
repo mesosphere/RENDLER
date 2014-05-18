@@ -15,11 +15,11 @@ A rendering web crawler for Apache Mesos.
 
 ### Data Structures
 
-- crawlQueue: list of urls
-- renderQueue: list of urls
-- processedURLs: set or urls
-- crawlResults: list of url tuples
-- renderResults: map of urls to imageUrls
+- `crawlQueue`: list of urls
+- `renderQueue`: list of urls
+- `processedURLs`: set or urls
+- `crawlResults`: list of url tuples
+- `renderResults`: map of urls to imageUrls
 
 ### Scheduler Behavior
 
