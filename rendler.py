@@ -111,9 +111,13 @@ class RenderingCrawler(mesos.Scheduler):
             self.renderResults[result.url] = result.imageUrl
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3:
         print "Usage: %s seedUrl master" % sys.argv[0]
         sys.exit(1)
+
+    localMode = False
+    if len(sys.argv) > 3 and sys.argv[3] == "--local":
+        localMode = True
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
@@ -127,7 +131,10 @@ if __name__ == "__main__":
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
+
     renderExecutor.command.value = "python render_executor.py"
+    if localMode:
+        renderExecutor.command.value = "python render_executor.py --local"
 
     renderSource = renderExecutor.command.uris.add()
     renderSource.value = crawlSource.value
