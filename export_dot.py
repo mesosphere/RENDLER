@@ -13,15 +13,17 @@ def dot(url_list, render_map, output_file):
     image_url = "http:" + s3image_url[3:]
     print "Downloading " + image_url
     filename = wget.download(image_url)
-    url_hash = "X" + hashlib.sha256(url).hexdigest()
+    url_hash = "X" + hashlib.sha256(url.encode('ascii', 'replace')).hexdigest()
     f.write("  " + url_hash + "[label=\"\" image=\"" + filename + "\"];\n")
     urls_with_images.append(url_hash)
 
   for urls in url_list:
     (from_url, to_url) = urls
 
-    from_hash = "X" + hashlib.sha256(from_url).hexdigest()
-    to_hash = "X" + hashlib.sha256(to_url).hexdigest()
+    print "Hashing " + from_url + " and " + to_url
+
+    from_hash = "X" + hashlib.sha256(from_url.encode('ascii', 'replace')).hexdigest()
+    to_hash = "X" + hashlib.sha256(to_url.encode('ascii', 'replace')).hexdigest()
 
     if (from_hash not in urls_with_images):
       continue
