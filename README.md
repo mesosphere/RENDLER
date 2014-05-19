@@ -52,6 +52,8 @@ and crawl queues.
 
 **Generating the final result file:**
 
+With [GraphViz](http://www.graphviz.org) installed:
+
     dot -Tpdf result.dot > result.pdf
 
 ### Sample Output
