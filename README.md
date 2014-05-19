@@ -9,6 +9,7 @@ A rendering web crawler for Apache Mesos.
 
 ```bash
 $ git clone https://github.com/mesosphere/RENDLER.git
+$ cd RENDLER
 $ wget http://downloads.mesosphere.io/demo/mesos-demo.box /tmp/mesos-demo.box
 $ vagrant box add --name mesos-demo /tmp/mesos-demo.box
 $ vagrant up
