@@ -15,7 +15,7 @@ $ cd RENDLER
 $ vagrant up
 $ vagrant ssh
 vagrant@mesos:~ $ cd hostfiles
-vagrant@mesos:hostfiles (master) $ python rendler.py http://wikipedia.org 127.0.1.1:5050
+vagrant@mesos:hostfiles (master) $ python rendler.py http://wikipedia.org 127.0.1.1:5050 --local
 # <ctrl+D> to stop...
 ```
 
