@@ -5,6 +5,19 @@ A rendering web crawler for Apache Mesos.
 
 ![YES RENDLER](http://img.pandawhale.com/57451-Jim-Carrey-Riddler-upvote-gif-NVsA.gif)
 
+## Quick Start with Vagrant
+
+```bash
+$ git clone https://github.com/mesosphere/RENDLER.git
+$ wget http://downloads.mesosphere.io/demo/mesos-demo.box /tmp/mesos-demo.box
+$ vagrant box add --name mesos-demo /tmp/mesos-demo.box
+$ vagrant up
+$ vagrant ssh
+vagrant@mesos:~ $ cd hostfiles
+vagrant@mesos:hostfiles (master) $ python rendler.py http://wikipedia.org 127.0.1.1:5050
+# <ctrl+D> to stop...
+```
+
 ## Crawl Executor
 
 **Dependencies:**
@@ -51,6 +64,8 @@ and crawl queues.
     sudo easy_install wget
 
 **Generating the final result file:**
+
+With [GraphViz](http://www.graphviz.org) installed:
 
     dot -Tpdf result.dot > result.pdf
 
