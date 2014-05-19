@@ -28,6 +28,9 @@ import mesos_pb2
 import results
 
 class RenderExecutor(mesos.Executor):
+    def RenderExecutor(self, local):
+      self.local = local
+
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
       pass
 
@@ -52,17 +55,21 @@ class RenderExecutor(mesos.Executor):
                     print "Could not render " + url
                     return
 
-                # 2) Upload to s3.
-                s3destination = "s3://downloads.mesosphere.io/demo/artifacts/" + destination
-                if call(["s3cmd", "put", destination, s3destination]) != 0:
-                    print "Could not upload " + destination + " to " + s3destination
-                    return
+                if not self.local:
+                  # 2) Upload to s3.
+                  remote_destination = "s3://downloads.mesosphere.io/demo/artifacts/" + destination
+                  if call(["s3cmd", "put", destination, remote_destination]) != 0:
+                      print "Could not upload " + destination + " to " + remote_destination
+                      return
+                else:
+                  remote_destination = "file:///" + destination
+
 
                 # 3) Announce render result to framework.
                 res = results.RenderResult(
                     task.task_id.value,
                     url,
-                    s3destination
+                    remote_destination
                 )
                 message = repr(res)
                 driver.sendFrameworkMessage(message)
@@ -96,5 +103,6 @@ class RenderExecutor(mesos.Executor):
 
 if __name__ == "__main__":
     print "Starting Render Executor (RE)"
-    driver = mesos.MesosExecutorDriver(RenderExecutor())
+    local = True
+    driver = mesos.MesosExecutorDriver(RenderExecutor(local))
     sys.exit(0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1)

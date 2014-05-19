@@ -9,10 +9,15 @@ def dot(url_list, render_map, output_file):
   # Download images
   urls_with_images = []
   for url in render_map:
-    s3image_url = render_map[url]
-    image_url = "http:" + s3image_url[3:]
-    print "Downloading " + image_url
-    filename = wget.download(image_url)
+    if url[:8] == "file:///":
+      filename = url[8:]
+      print "Local file: " + filename
+    else:
+      s3image_url = render_map[url]
+      image_url = "http:" + s3image_url[3:]
+      print "Downloading " + image_url
+      filename = wget.download(image_url)
+
     url_hash = "X" + hashlib.sha256(url.encode('ascii', 'replace')).hexdigest()
     f.write("  " + url_hash + "[label=\"\" image=\"" + filename + "\"];\n")
     urls_with_images.append(url_hash)
@@ -39,11 +44,11 @@ def dot(url_list, render_map, output_file):
   print "Results writting to " + output_file
   pass
 
-dot([
-    ("http://google.com", "http://github.com"),
-    ("http://google.com", "http://yahoo.com")],
-    {
-      "http://google.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-      "http://github.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-      "http://yahoo.com":  "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-    }, "test.dot")
+# dot([
+#     ("http://google.com", "http://github.com"),
+#     ("http://google.com", "http://yahoo.com")],
+#     {
+#       "http://google.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#       "http://github.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#       "http://yahoo.com":  "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#     }, "test.dot")
