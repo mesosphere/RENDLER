@@ -19,6 +19,8 @@ vagrant@mesos:hostfiles (master) $ python rendler.py http://wikipedia.org 127.0.
 # <ctrl+D> to stop...
 ```
 
+Once you run `vagrant up` you can see the Mesos Web UI at [http://10.141.141.10:5050](http://10.141.141.10:5050)
+
 ## Crawl Executor
 
 **Dependencies:**
