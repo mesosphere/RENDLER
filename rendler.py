@@ -15,8 +15,14 @@ import export_dot
 TASK_CPUS = 0.1
 TASK_MEM = 32
 
+# See the Mesos Framework Development Guide:
+# http://mesos.apache.org/documentation/latest/app-framework-development-guide
+
 class RenderingCrawler(mesos.Scheduler):
     def __init__(self, seedUrl, crawlExecutor, renderExecutor):
+        print "RENDLER"
+        print "======="
+        print "seedUrl: [%s]?\n" % seedUrl
         self.seedUrl = seedUrl
         self.crawlExecutor  = crawlExecutor
         self.renderExecutor = renderExecutor
@@ -26,8 +32,6 @@ class RenderingCrawler(mesos.Scheduler):
         self.crawlResults = set([])
         self.renderResults = {}
         self.tasksCreated  = 0
-        self.tasksLaunched  = 0
-        self.tasksFinished  = 0
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID [%s]" % frameworkId.value
@@ -63,11 +67,9 @@ class RenderingCrawler(mesos.Scheduler):
         return task
 
     def resourceOffers(self, driver, offers):
-        print "Got %d resource offers" % len(offers)
         for offer in offers:
             print "Got resource offer [%s]" % offer.id.value
 
-            # TODO: this better
             tasks = []
 
             if self.crawlQueue:
@@ -111,21 +113,18 @@ class RenderingCrawler(mesos.Scheduler):
             self.renderResults[result.url] = result.imageUrl
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
         print "Usage: %s seedUrl mesosMasterUrl [--local]" % sys.argv[0]
         sys.exit(1)
 
-    localMode = False
-    if len(sys.argv) > 3 and sys.argv[3] == "--local":
-        localMode = True
+    localMode = len(sys.argv) == 4 and sys.argv[3] == "--local"
+
+    rendlerArtifact = "http://downloads.mesosphere.io/demo/rendler.tgz"
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
     crawlExecutor.command.value = "python crawl_executor.py"
-
-    crawlSource = crawlExecutor.command.uris.add()
-    crawlSource.value = "http://downloads.mesosphere.io/demo/rendler.tgz"
-
+    crawlExecutor.command.uris.add().value = rendlerArtifact
     crawlExecutor.name = "Crawler"
     crawlExecutor.source = "rendering-crawler"
 
@@ -134,11 +133,9 @@ if __name__ == "__main__":
 
     renderExecutor.command.value = "python render_executor.py"
     if localMode:
-        renderExecutor.command.value = "python render_executor.py --local"
+        renderExecutor.command.value += " --local"
 
-    renderSource = renderExecutor.command.uris.add()
-    renderSource.value = crawlSource.value
-
+    renderExecutor.command.uris.add().value = rendlerArtifact
     renderExecutor.name = "Renderer"
     renderExecutor.source = "rendering-crawler"
 
@@ -151,31 +148,11 @@ if __name__ == "__main__":
         framework.checkpoint = True
 
     crawler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
-    if os.getenv("MESOS_AUTHENTICATE"):
-        print "Enabling authentication for the framework"
 
-        if not os.getenv("DEFAULT_PRINCIPAL"):
-            print "Expecting authentication principal in the environment"
-            sys.exit(1);
-
-        if not os.getenv("DEFAULT_SECRET"):
-            print "Expecting authentication secret in the environment"
-            sys.exit(1);
-
-        credential = mesos_pb2.Credential()
-        credential.principal = os.getenv("DEFAULT_PRINCIPAL")
-        credential.secret = os.getenv("DEFAULT_SECRET")
-
-        driver = mesos.MesosSchedulerDriver(
-            crawler,
-            framework,
-            sys.argv[2],
-            credential)
-    else:
-        driver = mesos.MesosSchedulerDriver(
-            crawler,
-            framework,
-            sys.argv[2])
+    driver = mesos.MesosSchedulerDriver(
+        crawler,
+        framework,
+        sys.argv[2])
 
     # driver.run() blocks; we run it in a separate thread
     def run_driver_async():
@@ -183,15 +160,12 @@ if __name__ == "__main__":
         driver.stop()
         sys.exit(status)
 
-    driverRunThread = Thread(target = run_driver_async, args = ())
-    driverRunThread.start()
+    Thread(target = run_driver_async, args = ()).start()
 
     # Listen for CTRL+D
     while True:
         line = sys.stdin.readline()
-        if line:
-            pass
-        else:
+        if not line:
             driver.stop()
             export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
             print "Goodbye!"
