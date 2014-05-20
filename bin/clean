@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -o errexit -o nounset -o pipefail
+
+RENDLER_HOME="$( cd "$( dirname "$0" )/.." && pwd )"
+
+rm -f $RENDLER_HOME/*.dot
+rm -f $RENDLER_HOME/*.pdf
+rm -f $RENDLER_HOME/*.png
+rm -f $RENDLER_HOME/*.pyc

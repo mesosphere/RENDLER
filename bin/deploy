@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -o errexit -o nounset -o pipefail
+
+RENDLER_HOME="$( cd "$( dirname "$0" )/.." && pwd )"
+RENDLER_ARTIFACT="$RENDLER_HOME/../rendler.tgz"
+
+cd "$RENDLER_HOME"
+rm -f "$RENDLER_ARTIFACT"
+tar -czf "$RENDLER_ARTIFACT" *.py *.js
+s3cmd put "$RENDLER_ARTIFACT" s3://downloads.mesosphere.io/demo/
