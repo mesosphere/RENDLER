@@ -3,4 +3,4 @@ set -o errexit -o nounset -o pipefail
 
 RENDLER_HOME="$( cd "$( dirname "$0" )/.." && pwd )"
 
-dot -Tpdf "$RENDLER_HOME/result.dot" > "$RENDLER_HOME/result.pdf"
+dot -Tpdf "$RENDLER_HOME/result.dot" > "$RENDLER_HOME/result.pdf" && echo "Wrote graph to '$RENDLER_HOME/result.pdf'"
