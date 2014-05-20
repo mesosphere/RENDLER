@@ -5,7 +5,8 @@ import json
 import os
 import signal
 import sys
-from threading import Thread, Lock
+import time
+from threading import Thread
 
 import mesos
 import mesos_pb2
@@ -102,9 +103,6 @@ class RenderingCrawler(mesos.Scheduler):
                 print "Declining offer on [%s]" % offer.hostname
                 driver.declineOffer(offer.id)
 
-    def awaitShutdown(self):
-        pass
-
     def statusUpdate(self, driver, update):
         stateName = task_state.nameFor[update.state]
         print "Task [%s] is in state [%s]" % (update.task_id.value, stateName)
@@ -113,12 +111,6 @@ class RenderingCrawler(mesos.Scheduler):
             self.tasksRunning += 1
         elif update.state > 1: # Terminal state
             self.tasksRunning -= 1
-
-        if self.shuttingDown and self.tasksRunning <= 0:
-            print "Last tasks finished, generating graph..."
-            driver.stop()
-            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
-            print "Goodbye!"
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
         o = json.loads(message)
@@ -196,10 +188,9 @@ if __name__ == "__main__":
         if not line:
             print "Rendler is shutting down"
             crawler.shuttingDown = True
-            if crawler.tasksRunning == 0:
-                driver.stop()
-                export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
-                print "Goodbye!"
-                sys.exit(0)
-            else:
-                crawler.awaitShutdown()
+            while crawler.tasksRunning > 0:
+                time.sleep(1)
+            driver.stop()
+            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
+            print "Goodbye!"
+            sys.exit(0)
