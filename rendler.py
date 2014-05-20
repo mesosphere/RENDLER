@@ -5,7 +5,7 @@ import json
 import os
 import signal
 import sys
-from threading import Thread
+from threading import Thread, Lock
 
 import mesos
 import mesos_pb2
@@ -33,6 +33,8 @@ class RenderingCrawler(mesos.Scheduler):
         self.crawlResults = set([])
         self.renderResults = {}
         self.tasksCreated  = 0
+        self.tasksRunning = 0
+        self.shuttingDown = False
 
     def registered(self, driver, frameworkId, masterInfo):
         print "Registered with framework ID [%s]" % frameworkId.value
@@ -67,9 +69,19 @@ class RenderingCrawler(mesos.Scheduler):
         task.data = str(url)
         return task
 
+    def printQueueStatistics(self):
+        print "Crawl queue length: %d, Render queue length: %d, Running tasks: %d" % (len(self.crawlQueue), len(self.renderQueue), self.tasksRunning)
+
     def resourceOffers(self, driver, offers):
+        self.printQueueStatistics()
+
         for offer in offers:
             print "Got resource offer [%s]" % offer.id.value
+
+            if self.shuttingDown:
+                print "Shutting down: declining offer on [%s]" % offer.hostname
+                driver.declineOffer(offer.id)
+                continue
 
             tasks = []
 
@@ -90,9 +102,23 @@ class RenderingCrawler(mesos.Scheduler):
                 print "Declining offer on [%s]" % offer.hostname
                 driver.declineOffer(offer.id)
 
+    def awaitShutdown(self):
+        pass
+
     def statusUpdate(self, driver, update):
         stateName = task_state.nameFor[update.state]
         print "Task [%s] is in state [%s]" % (update.task_id.value, stateName)
+
+        if update.state == 1: # Running
+            self.tasksRunning += 1
+        elif update.state > 1: # Terminal state
+            self.tasksRunning -= 1
+
+        if self.shuttingDown and self.tasksRunning <= 0:
+            print "Last tasks finished, generating graph..."
+            driver.stop()
+            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
+            print "Goodbye!"
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
         o = json.loads(message)
@@ -168,7 +194,12 @@ if __name__ == "__main__":
     while True:
         line = sys.stdin.readline()
         if not line:
-            driver.stop()
-            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
-            print "Goodbye!"
-            sys.exit(0)
+            print "Rendler is shutting down"
+            crawler.shuttingDown = True
+            if crawler.tasksRunning == 0:
+                driver.stop()
+                export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
+                print "Goodbye!"
+                sys.exit(0)
+            else:
+                crawler.awaitShutdown()
