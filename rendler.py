@@ -10,6 +10,7 @@ from threading import Thread
 import mesos
 import mesos_pb2
 import results
+import task_state
 import export_dot
 
 TASK_CPUS = 0.1
@@ -22,7 +23,7 @@ class RenderingCrawler(mesos.Scheduler):
     def __init__(self, seedUrl, crawlExecutor, renderExecutor):
         print "RENDLER"
         print "======="
-        print "seedUrl: [%s]?\n" % seedUrl
+        print "seedUrl: [%s]\n" % seedUrl
         self.seedUrl = seedUrl
         self.crawlExecutor  = crawlExecutor
         self.renderExecutor = renderExecutor
@@ -90,7 +91,8 @@ class RenderingCrawler(mesos.Scheduler):
                 driver.declineOffer(offer.id)
 
     def statusUpdate(self, driver, update):
-        print "Task [%s] is in state [%d]" % (update.task_id.value, update.state)
+        stateName = task_state.nameFor[update.state]
+        print "Task [%s] is in state [%s]" % (update.task_id.value, stateName)
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
         o = json.loads(message)
