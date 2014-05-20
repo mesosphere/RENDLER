@@ -1,7 +1,11 @@
 import hashlib
 import wget
 
+def hash_url(url):
+  return hashlib.sha256(url.encode('ascii', 'replace')).hexdigest()
+
 def dot(url_list, render_map, output_file):
+  print repr(render_map)
   f = open(output_file, 'w')
   f.write("digraph G {\n")
   f.write("  node [shape=box];\n")
@@ -9,26 +13,34 @@ def dot(url_list, render_map, output_file):
   # Download images
   urls_with_images = []
   for url in render_map:
-    if url[:8] == "file:///":
-      filename = url[8:]
-      print "Local file: " + filename
-    else:
-      s3image_url = render_map[url]
-      image_url = "http:" + s3image_url[3:]
-      print "Downloading " + image_url
-      filename = wget.download(image_url)
+    image_url = render_map[url]
 
-    url_hash = "X" + hashlib.sha256(url.encode('ascii', 'replace')).hexdigest()
+    if image_url[:8] == "file:///":
+      # Support local runs. Format of url will be 'file:///<absolute path>'
+      filename = image_url[8:]
+
+    elif image_url[:5] == "s3://":
+      # Support distributed runs uploading to Amazon S3.
+      s3image_url = "http://" + image_url[5:]
+      filename = wget.download(s3image_url)
+
+    else:
+      print "Don't know how to download " + image_url
+      continue
+
+    # Prepend character as dot vertices cannot starting with a digit.
+    url_hash = "X" + hash_url(url)
     f.write("  " + url_hash + "[label=\"\" image=\"" + filename + "\"];\n")
+
+    # Add to list as we sort out edges to vertices without an image.
     urls_with_images.append(url_hash)
 
+  # Add vertices.
   for urls in url_list:
     (from_url, to_url) = urls
 
-    print "Hashing " + from_url + " and " + to_url
-
-    from_hash = "X" + hashlib.sha256(from_url.encode('ascii', 'replace')).hexdigest()
-    to_hash = "X" + hashlib.sha256(to_url.encode('ascii', 'replace')).hexdigest()
+    from_hash = "X" + hash_url(from_url)
+    to_hash = "X" + hash_url(to_url)
 
     if (from_hash not in urls_with_images):
       continue
@@ -36,19 +48,11 @@ def dot(url_list, render_map, output_file):
     if (to_hash not in urls_with_images):
       continue
 
+    # DOT format is:
+    # A -> B;
     f.write("  " + from_hash + " -> " + to_hash + ";\n")
 
   f.write("}\n")
   f.close()
 
   print "Results writting to " + output_file
-  pass
-
-# dot([
-#     ("http://google.com", "http://github.com"),
-#     ("http://google.com", "http://yahoo.com")],
-#     {
-#       "http://google.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-#       "http://github.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-#       "http://yahoo.com":  "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-#     }, "test.dot")

@@ -46,40 +46,37 @@ class CrawlExecutor(mesos.Executor):
             update.state = mesos_pb2.TASK_RUNNING
             driver.sendStatusUpdate(update)
 
-            def crawl(url):
-                source = urllib.urlopen(url).read()
-                soup = BeautifulSoup(source)
+            url = task.data
 
-                urls = []
-                try:
-                  for item in soup.find_all('a'):
-                      try:
-                          urls.append(urlparse.urljoin(url, item.get('href')))
-                      except:
-                          pass # Not a valid link
-                except:
-                  print "Could not fetch any links from html"
-                  return
+            source = urllib.urlopen(url).read()
+            soup = BeautifulSoup(source)
 
-                res = results.CrawlResult(
-                  task.task_id.value,
-                  url,
-                  urls
-                )
-                message = repr(res)
-                driver.sendFrameworkMessage(message)
+            urls = []
+            try:
+              for item in soup.find_all('a'):
+                  try:
+                      urls.append(urlparse.urljoin(url, item.get('href')))
+                  except:
+                      pass # Not a valid link
+            except:
+              print "Could not fetch any links from html"
+              return
 
-                print "Sending status update..."
-                update = mesos_pb2.TaskStatus()
-                update.task_id.value = task.task_id.value
-                update.state = mesos_pb2.TASK_FINISHED
-                driver.sendStatusUpdate(update)
-                print "Sent status update"
-                return
+            res = results.CrawlResult(
+              task.task_id.value,
+              url,
+              urls
+            )
+            message = repr(res)
+            driver.sendFrameworkMessage(message)
 
-            crawlThread = Thread(target = crawl, args = [task.data])
-            crawlThread.start();
-
+            print "Sending status update..."
+            update = mesos_pb2.TaskStatus()
+            update.task_id.value = task.task_id.value
+            update.state = mesos_pb2.TASK_FINISHED
+            driver.sendStatusUpdate(update)
+            print "Sent status update"
+            return
 
         thread = threading.Thread(target=run_task)
         thread.start()
