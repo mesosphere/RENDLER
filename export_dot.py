@@ -2,6 +2,7 @@ import hashlib
 import wget
 
 def dot(url_list, render_map, output_file):
+  print repr(render_map)
   f = open(output_file, 'w')
   f.write("digraph G {\n")
   f.write("  node [shape=box];\n")
@@ -9,14 +10,14 @@ def dot(url_list, render_map, output_file):
   # Download images
   urls_with_images = []
   for url in render_map:
-    if url[:8] == "file:///":
-      filename = url[8:]
+    image_url = render_map[url]
+    if image_url[:8] == "file:///":
+      filename = image_url[8:]
       print "Local file: " + filename
     else:
-      s3image_url = render_map[url]
-      image_url = "http:" + s3image_url[3:]
-      print "Downloading " + image_url
-      filename = wget.download(image_url)
+      s3image_url = "http:" + image_url[3:]
+      print "Downloading " + s3image_url
+      filename = wget.download(s3image_url)
 
     url_hash = "X" + hashlib.sha256(url.encode('ascii', 'replace')).hexdigest()
     f.write("  " + url_hash + "[label=\"\" image=\"" + filename + "\"];\n")
@@ -24,8 +25,6 @@ def dot(url_list, render_map, output_file):
 
   for urls in url_list:
     (from_url, to_url) = urls
-
-    print "Hashing " + from_url + " and " + to_url
 
     from_hash = "X" + hashlib.sha256(from_url.encode('ascii', 'replace')).hexdigest()
     to_hash = "X" + hashlib.sha256(to_url.encode('ascii', 'replace')).hexdigest()
@@ -50,5 +49,5 @@ def dot(url_list, render_map, output_file):
 #     {
 #       "http://google.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
 #       "http://github.com": "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
-#       "http://yahoo.com":  "s3://26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
+#       "http://yahoo.com":  "file:///tmp/26.media.tumblr.com/tumblr_lsmonudp4G1qchqb8o1_400.png",
 #     }, "test.dot")

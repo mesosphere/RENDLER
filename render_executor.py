@@ -16,10 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from subprocess import call
+from threading import Thread
+import os
 import sys
 import threading
-from threading import Thread
-from subprocess import call
 import time
 import uuid
 
@@ -28,17 +29,17 @@ import mesos_pb2
 import results
 
 class RenderExecutor(mesos.Executor):
-    def RenderExecutor(self, local):
-      self.local = local
+    def __init__(self, local):
+        self.local = local
 
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
-      pass
+        pass
 
     def reregistered(self, driver, slaveInfo):
-      pass
+        pass
 
     def disconnected(self, driver):
-      pass
+        pass
 
     def launchTask(self, driver, task):
         def run_task():
@@ -48,42 +49,43 @@ class RenderExecutor(mesos.Executor):
             update.state = mesos_pb2.TASK_RUNNING
             driver.sendStatusUpdate(update)
 
-            def render(url):
-                # 1) Render picture to hash file name.
-                destination = uuid.uuid4().hex + ".png"
-                if call(["phantomjs", "render.js", url, destination]) != 0:
-                    print "Could not render " + url
-                    return
+            url = task.data
 
-                if not self.local:
-                  # 2) Upload to s3.
-                  remote_destination = "s3://downloads.mesosphere.io/demo/artifacts/" + destination
-                  if call(["s3cmd", "put", destination, remote_destination]) != 0:
-                      print "Could not upload " + destination + " to " + remote_destination
-                      return
-                else:
-                  remote_destination = "file:///" + destination
-
-
-                # 3) Announce render result to framework.
-                res = results.RenderResult(
-                    task.task_id.value,
-                    url,
-                    remote_destination
-                )
-                message = repr(res)
-                driver.sendFrameworkMessage(message)
-
-                print "Sending status update..."
-                update = mesos_pb2.TaskStatus()
-                update.task_id.value = task.task_id.value
-                update.state = mesos_pb2.TASK_FINISHED
-                driver.sendStatusUpdate(update)
-                print "Sent status update"
+            # 1) Render picture to hash file name.
+            destination = uuid.uuid4().hex + ".png"
+            if call(["phantomjs", "render.js", url, destination]) != 0:
+                print "Could not render " + url
                 return
 
-            crawlThread = Thread(target = render, args = [task.data])
-            crawlThread.start();
+            if not self.local:
+              # 2) Upload to s3.
+              remote_destination = "s3://downloads.mesosphere.io/demo/artifacts/" + destination
+              print "Uploading image to " + remote_destination
+              if call(["s3cmd", "put", destination, remote_destination]) != 0:
+                  print "Could not upload " + destination + " to " + remote_destination
+                  return
+            else:
+              remote_destination = "file:///" + os.getcwd() + "/" + destination
+
+
+            # 3) Announce render result to framework.
+            print "Announcing render result"
+            res = results.RenderResult(
+                task.task_id.value,
+                url,
+                remote_destination
+            )
+            message = repr(res)
+            driver.sendFrameworkMessage(message)
+
+            print "Sending status update for task %s" % task.task_id.value
+            update = mesos_pb2.TaskStatus()
+            update.task_id.value = task.task_id.value
+            update.state = mesos_pb2.TASK_FINISHED
+            driver.sendStatusUpdate(update)
+            print "Sent status update for task %s" % task.task_id.value
+            return
+
 
 
         thread = threading.Thread(target=run_task)
@@ -103,6 +105,9 @@ class RenderExecutor(mesos.Executor):
 
 if __name__ == "__main__":
     print "Starting Render Executor (RE)"
-    local = True
+    local = False
+    if len(sys.argv) == 2 and sys.argv[1] == "--local":
+      local = True
+
     driver = mesos.MesosExecutorDriver(RenderExecutor(local))
     sys.exit(0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1)
