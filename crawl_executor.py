@@ -9,7 +9,7 @@
 # with the License.  You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -51,11 +51,11 @@ class CrawlExecutor(mesos.Executor):
             source = urllib.urlopen(url).read()
             soup = BeautifulSoup(source)
 
-            urls = []
+            links = []
             try:
               for item in soup.find_all('a'):
                   try:
-                      urls.append(urlparse.urljoin(url, item.get('href')))
+                      links.append(urlparse.urljoin(url, item.get('href')))
                   except:
                       pass # Not a valid link
             except:
@@ -65,7 +65,7 @@ class CrawlExecutor(mesos.Executor):
             res = results.CrawlResult(
               task.task_id.value,
               url,
-              urls
+              links 
             )
             message = repr(res)
             driver.sendFrameworkMessage(message)
