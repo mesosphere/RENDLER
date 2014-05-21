@@ -17,11 +17,14 @@ import export_dot
 TASK_CPUS = 0.1
 TASK_MEM = 32
 
-# See the Mesos Framework Development Guide:
+# Mesos Framework Development Guide:
 # http://mesos.apache.org/documentation/latest/app-framework-development-guide
 #
-# See the Mesos protocol buffer definitions for Python:
-# 
+# Scheduler, scheduler driver, executor, and executor driver definitions:
+# https://github.com/apache/mesos/blob/master/src/python/src/mesos.py
+#
+# Mesos protocol buffer definitions for Python:
+# https://github.com/mesosphere/deimos/blob/master/deimos/mesos_pb2.py
 #
 class RenderingCrawler(mesos.Scheduler):
     def __init__(self, seedUrl, crawlExecutor, renderExecutor):
