@@ -7,19 +7,31 @@ A rendering web crawler for Apache Mesos.
 
 ## Quick Start with Vagrant
 
+**Start the `mesos-demo` VM**
+
 ```bash
 $ wget http://downloads.mesosphere.io/demo/mesos-demo.box -O /tmp/mesos-demo.box
 $ vagrant box add --name mesos-demo /tmp/mesos-demo.box
 $ git clone https://github.com/mesosphere/RENDLER.git
 $ cd RENDLER
 $ vagrant up
+```
+
+Now that the VM is running, you can view the Mesos Web UI here:
+[http://10.141.141.10:5050](http://10.141.141.10:5050)
+
+**Run RENDLER in the `mesos-demo` VM**
+
+```bash
 $ vagrant ssh
 vagrant@mesos $ cd hostfiles
 vagrant@mesos $ python rendler.py http://wikipedia.org 127.0.1.1:5050 --local
 # <ctrl+D> to stop...
+vagrant@mesos $ bin/make-pdf
+Wrote graph to '/home/vagrant/hostfiles/result.pdf'
 ```
 
-Once you run `vagrant up` you can see the Mesos Web UI at [http://10.141.141.10:5050](http://10.141.141.10:5050)
+Open `result.pdf` in your favorite viewer to see the rendered result!
 
 ### Installing Dependencies:
 **Beautiful Soup:** Used by the Crawl Executor to extract links from webpages.
