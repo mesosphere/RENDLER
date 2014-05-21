@@ -121,7 +121,7 @@ class RenderingCrawler(mesos.Scheduler):
         stateName = task_state.nameFor[update.state]
         print "Task [%s] is in state [%s]" % (update.task_id.value, stateName)
 
-        if update.state == 1: # Running
+        if update.state == 1:  # Running
             self.tasksRunning += 1
         elif update.state > 1: # Terminal state
             self.tasksRunning -= 1
