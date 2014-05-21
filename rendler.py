@@ -131,15 +131,15 @@ class RenderingCrawler(mesos.Scheduler):
 
         if executorId.value == crawlExecutor.executor_id.value:
             result = results.CrawlResult(o['taskId'], o['url'], o['links'])
-            for url in result.links:
-                edge = (result.url, url)
+            for link in result.links:
+                edge = (result.url, link)
                 print "Appending [%s] to crawl results" % repr(edge)
                 self.crawlResults.add(edge)
-                if not url in self.processedURLs:
-                    print "Enqueueing [%s]" % url
-                    self.crawlQueue.append(url)
-                    self.renderQueue.append(url)
-                    self.processedURLs.add(url)
+                if not link in self.processedURLs:
+                    print "Enqueueing [%s]" % link
+                    self.crawlQueue.append(link)
+                    self.renderQueue.append(link)
+                    self.processedURLs.add(link)
 
         elif executorId.value == renderExecutor.executor_id.value:
             result = results.RenderResult(o['taskId'], o['url'], o['imageUrl'])
@@ -181,10 +181,10 @@ if __name__ == "__main__":
         print "Enabling checkpoint for the framework"
         framework.checkpoint = True
 
-    crawler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
+    rendler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
 
     driver = mesos.MesosSchedulerDriver(
-        crawler,
+        rendler,
         framework,
         sys.argv[2])
 
@@ -201,10 +201,10 @@ if __name__ == "__main__":
         line = sys.stdin.readline()
         if not line:
             print "Rendler is shutting down"
-            crawler.shuttingDown = True
-            while crawler.tasksRunning > 0:
+            rendler.shuttingDown = True
+            while rendler.tasksRunning > 0:
                 time.sleep(1)
             driver.stop()
-            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
+            export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
             print "Goodbye!"
             sys.exit(0)
