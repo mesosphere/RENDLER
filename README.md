@@ -25,11 +25,15 @@ Once you run `vagrant up` you can see the Mesos Web UI at [http://10.141.141.10:
 
 **Dependencies:**
 
-    sudo easy_install beautifulsoup4
+```bash
+$ sudo easy_install beautifulsoup4
+```
 
 ## Render Executor
 
-    sudo brew install phantomjs
+```bash
+$ sudo brew install phantomjs
+```
 
 ## Scheduler
 
@@ -64,13 +68,17 @@ and crawl queues.
 
 **Dependencies:**
 
-    sudo easy_install wget
-
+```bash
+$ sudo easy_install wget
+```
 **Generating the final result file:**
 
 With [GraphViz](http://www.graphviz.org) installed:
 
-    dot -Tpdf result.dot > result.pdf
+```bash
+$ ./bin/make-pdf
+Wrote graph to '/home/vagrant/hostfiles/result.pdf'
+```
 
 ### Sample Output
 
