@@ -21,18 +21,23 @@ vagrant@mesos $ python rendler.py http://wikipedia.org 127.0.1.1:5050 --local
 
 Once you run `vagrant up` you can see the Mesos Web UI at [http://10.141.141.10:5050](http://10.141.141.10:5050)
 
-## Crawl Executor
-
-**Dependencies:**
+### Installing Dependencies:
+**Beautiful Soup:** Used by the Crawl Executor to extract links from webpages.
 
 ```bash
 $ sudo easy_install beautifulsoup4
 ```
 
-## Render Executor
+**Phantomjs:** Used by the Render Executor to render a webpage into a png.
 
 ```bash
 $ sudo brew install phantomjs
+```
+
+**Wget:** Used by the Dot Export Script to fetch rendered images from s3.
+
+```bash
+$ sudo easy_install wget
 ```
 
 ## Scheduler
@@ -64,16 +69,8 @@ and crawl queues.
    declines resource offers to make them available to other frameworks running
    on the cluster.
 
-### Dot Export Script
-
-**Dependencies:**
-
-```bash
-$ sudo easy_install wget
-```
-**Generating the final result file:**
-
-With [GraphViz](http://www.graphviz.org) installed:
+### Generating a pdf of your render graph output
+**With [GraphViz](http://www.graphviz.org) installed:**
 
 ```bash
 $ ./bin/make-pdf
