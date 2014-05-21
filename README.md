@@ -8,7 +8,7 @@ A rendering web crawler for Apache Mesos.
 ## Quick Start with Vagrant
 
 ```bash
-$ wget http://downloads.mesosphere.io/demo/mesos-demo.box /tmp/mesos-demo.box
+$ wget http://downloads.mesosphere.io/demo/mesos-demo.box -O /tmp/mesos-demo.box
 $ vagrant box add --name mesos-demo /tmp/mesos-demo.box
 $ git clone https://github.com/mesosphere/RENDLER.git
 $ cd RENDLER
