@@ -5,6 +5,12 @@ A rendering web crawler for Apache Mesos.
 
 ![YES RENDLER](http://img.pandawhale.com/57451-Jim-Carrey-Riddler-upvote-gif-NVsA.gif)
 
+RENDLER consists of three main components:
+
+- `CrawlExecutor` extends `mesos.Executor`
+- `RenderExecutor` extends `mesos.Executor`
+- `RenderingCrawler` extends `mesos.Scheduler` and launches tasks with the executors
+
 ## Quick Start with Vagrant
 
 **Start the `mesos-demo` VM**
@@ -50,6 +56,39 @@ $ sudo brew install phantomjs
 
 ```bash
 $ sudo easy_install wget
+```
+
+## Crawl Executor
+
+- Interprets incoming tasks' `task.data` field as a URL
+- Fetches the resource, extracts links from the document
+- Sends a framework message to the scheduler containing the crawl result.
+
+## Render Executor
+
+- Interprets incoming tasks' `task.data` field as a URL
+- Fetches the resource, saves a png image to a location accessible to the scheduler.
+- Sends a framework message to the scheduler containing the render result.
+
+## Intermediate Data Structures
+
+We define some common data types to facilitate communication between the scheduler
+and the executors.  Their default representation is JSON.
+
+```python
+CrawlResult(
+    "1234",                                 # taskId
+    "http://foo.co",                        # url
+    ["http://foo.co/a", "http://foo.co/b"]  # links
+)
+```
+
+```python
+RenderResult(
+    "1234",                                 # taskId
+    "http://foo.co",                        # url
+    "http://dl.mega.corp/foo.png"           # imageUrl
+)
 ```
 
 ## Scheduler
