@@ -76,7 +76,7 @@ We define some common data types to facilitate communication between the schedul
 and the executors.  Their default representation is JSON.
 
 ```python
-CrawlResult(
+results.CrawlResult(
     "1234",                                 # taskId
     "http://foo.co",                        # url
     ["http://foo.co/a", "http://foo.co/b"]  # links
@@ -84,7 +84,7 @@ CrawlResult(
 ```
 
 ```python
-RenderResult(
+results.RenderResult(
     "1234",                                 # taskId
     "http://foo.co",                        # url
     "http://dl.mega.corp/foo.png"           # imageUrl
