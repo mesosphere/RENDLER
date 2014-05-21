@@ -71,7 +71,19 @@ class RenderingCrawler(mesos.Scheduler):
         return task
 
     def printQueueStatistics(self):
-        print "Crawl queue length: %d, Render queue length: %d, Running tasks: %d" % (len(self.crawlQueue), len(self.renderQueue), self.tasksRunning)
+        print "Crawl queue length: %d, Render queue length: %d, Running tasks: %d" % (
+            len(self.crawlQueue), len(self.renderQueue), self.tasksRunning
+        )
+
+    def maxTasksForOffer(self, offer):
+        count = 0
+        cpus = next(rsc.scalar.value for rsc in offer.resources if rsc.name == "cpus")
+        mem = next(rsc.scalar.value for rsc in offer.resources if rsc.name == "mem")
+        while cpus >= TASK_CPUS and mem >= TASK_MEM:
+            count += 1
+            cpus -= TASK_CPUS
+            mem -= TASK_MEM
+        return count
 
     def resourceOffers(self, driver, offers):
         self.printQueueStatistics()
@@ -84,17 +96,19 @@ class RenderingCrawler(mesos.Scheduler):
                 driver.declineOffer(offer.id)
                 continue
 
+            print "maxTasksForOffer: [%d]" % self.maxTasksForOffer(offer)
+
             tasks = []
 
-            if self.crawlQueue:
-                crawlTaskUrl = self.crawlQueue.popleft()
-                task = self.makeCrawlTask(crawlTaskUrl, offer)
-                tasks.append(task)
-
-            if self.renderQueue:
-                renderTaskUrl = self.renderQueue.popleft()
-                task = self.makeRenderTask(crawlTaskUrl, offer)
-                tasks.append(task)
+            for i in range(self.maxTasksForOffer(offer) / 2):
+                if self.crawlQueue:
+                    crawlTaskUrl = self.crawlQueue.popleft()
+                    task = self.makeCrawlTask(crawlTaskUrl, offer)
+                    tasks.append(task)
+                if self.renderQueue:
+                    renderTaskUrl = self.renderQueue.popleft()
+                    task = self.makeRenderTask(crawlTaskUrl, offer)
+                    tasks.append(task)
 
             if tasks:
                 print "Accepting offer on [%s]" % offer.hostname
