@@ -65,7 +65,7 @@ class CrawlExecutor(mesos.Executor):
             res = results.CrawlResult(
               task.task_id.value,
               url,
-              links 
+              links
             )
             message = repr(res)
             driver.sendFrameworkMessage(message)
