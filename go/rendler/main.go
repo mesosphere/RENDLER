@@ -1,14 +1,11 @@
 package main
 
 import (
+	"code.google.com/p/goprotobuf/proto"
 	"flag"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strconv"
-
-	"code.google.com/p/goprotobuf/proto"
 	"github.com/mesosphere/mesos-go/mesos"
+	"strconv"
 )
 
 func main() {
@@ -17,7 +14,7 @@ func main() {
 	exit := make(chan bool)
 
 	master := flag.String("master", "localhost:5050", "Location of leading Mesos master")
-	localMode := flag.String("--local", false, "If true, saves rendered web pages on local disk")
+	localMode := flag.Bool("--local", false, "If true, saves rendered web pages on local disk")
 	flag.Parse()
 
 	rendlerArtifact := "http://downloads.mesosphere.io/demo/rendler.tgz"
@@ -27,7 +24,7 @@ func main() {
 		Command: &mesos.CommandInfo{
 			Value: proto.String("python crawl_executor.py"),
 			Uris: []*mesos.CommandInfo_URI{
-				&mesos.CommandInfo_URI{Value: rendlerArtifact},
+				&mesos.CommandInfo_URI{Value: &rendlerArtifact},
 			},
 		},
 		Name:   proto.String("Crawler"),
@@ -35,7 +32,7 @@ func main() {
 	}
 
 	renderCommand := "python render_executor.py"
-	if localMode {
+	if *localMode {
 		renderCommand += " --local"
 	}
 
@@ -44,7 +41,7 @@ func main() {
 		Command: &mesos.CommandInfo{
 			Value: proto.String(renderCommand),
 			Uris: []*mesos.CommandInfo_URI{
-				&mesos.CommandInfo_URI{Value: rendlerArtifact},
+				&mesos.CommandInfo_URI{Value: &rendlerArtifact},
 			},
 		},
 		Name:   proto.String("Renderer"),
@@ -79,7 +76,7 @@ func main() {
 								Value: proto.String("go-task-" + strconv.Itoa(taskId)),
 							},
 							SlaveId:  offer.SlaveId,
-							Executor: executor,
+							Executor: crawlExecutor,
 							Resources: []*mesos.Resource{
 								mesos.ScalarResource("cpus", 1),
 								mesos.ScalarResource("mem", 512),
@@ -106,13 +103,15 @@ func main() {
 				driver *mesos.SchedulerDriver,
 				executorId mesos.ExecutorID,
 				slaveId mesos.SlaveID,
-				message []byte) {
+				message string) {
 
-				switch executorId.value {
-				case crawlExecutor.executorId.value:
+				switch executorId.Value {
+				case crawlExecutor.ExecutorId.Value:
 					fmt.Printf("Received framework message from crawler")
-				case renderExecutor.executorId.value:
+
+				case renderExecutor.ExecutorId.Value:
 					fmt.Printf("Received framework message from renderer")
+
 				default:
 					fmt.Printf("Received a framework message from some unknown source")
 				}
