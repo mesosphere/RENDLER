@@ -2,6 +2,7 @@ package main
 
 import (
 	"code.google.com/p/goprotobuf/proto"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/mesosphere/mesos-go/mesos"
@@ -32,6 +33,7 @@ func main() {
 	}
 
 	renderCommand := "python render_executor.py"
+
 	if *localMode {
 		renderCommand += " --local"
 	}
@@ -108,9 +110,23 @@ func main() {
 				switch executorId.Value {
 				case crawlExecutor.ExecutorId.Value:
 					fmt.Printf("Received framework message from crawler")
+					var crawlResult CrawlResult
+					err := json.Unmarshal([]byte(message), &crawlResult)
+					if err != nil {
+						fmt.Printf("Error deserializing CrawlResult: [%s]", err)
+					} else {
+						fmt.Printf("CrawlResult: [%s]", crawlResult)
+					}
 
 				case renderExecutor.ExecutorId.Value:
 					fmt.Printf("Received framework message from renderer")
+					var renderResult RenderResult
+					err := json.Unmarshal([]byte(message), &renderResult)
+					if err != nil {
+						fmt.Printf("Error deserializing RenderResult: [%s]", err)
+					} else {
+						fmt.Printf("RenderResult: [%s]", renderResult)
+					}
 
 				default:
 					fmt.Printf("Received a framework message from some unknown source")
