@@ -9,8 +9,8 @@ import (
 	"github.com/mesosphere/mesos-go/mesos"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
-  "os/signal"
 )
 
 const TASK_CPUS = 0.1
@@ -18,7 +18,7 @@ const TASK_MEM = 32.0
 
 type Edge struct {
 	From string
-	To string
+	To   string
 }
 
 func (e Edge) String() string {
@@ -27,11 +27,11 @@ func (e Edge) String() string {
 
 //TODO(nnielsen): gofmt whole file.
 func main() {
-	crawlQueue := list.New() // list of string
+	crawlQueue := list.New()  // list of string
 	renderQueue := list.New() // list of string
 
 	processedURLs := list.New() // list of string
-	crawlResults := list.New() // list of CrawlEdge
+	crawlResults := list.New()  // list of CrawlEdge
 	renderResults := make(map[string]string)
 
 	seedUrl := flag.String("seed", "http://mesosphere.io", "The first URL to crawl")
@@ -41,21 +41,21 @@ func main() {
 
 	master := flag.String("master", "localhost:5050", "Location of leading Mesos master")
 	localMode := flag.Bool("local", false, "If true, saves rendered web pages on local disk")
-  // TODO(nnielsen): Add flag for artifacts.
+	// TODO(nnielsen): Add flag for artifacts.
 
 	flag.Parse()
 
-  c := make(chan os.Signal, 1)
-  signal.Notify(c, os.Interrupt, os.Kill)
-  go func (c chan os.Signal) {
-    s := <-c
-    fmt.Println("Got signal:", s)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	go func(c chan os.Signal) {
+		s := <-c
+		fmt.Println("Got signal:", s)
 
-    if (s == os.Interrupt) {
-      writeDOTFile(crawlResults, renderResults)
-    }
-    os.Exit(1)
-  }(c)
+		if s == os.Interrupt {
+			writeDOTFile(crawlResults, renderResults)
+		}
+		os.Exit(1)
+	}(c)
 
 	crawlCommand := "python crawl_executor.py"
 	renderCommand := "python render_executor.py"
@@ -65,14 +65,14 @@ func main() {
 		crawlCommand += " --local"
 	}
 
-  // TODO(nnielsen): In local mode, verify artifact locations.
+	// TODO(nnielsen): In local mode, verify artifact locations.
 	rendlerArtifacts := executorURIs()
 
 	crawlExecutor := &mesos.ExecutorInfo{
 		ExecutorId: &mesos.ExecutorID{Value: proto.String("crawl-executor")},
 		Command: &mesos.CommandInfo{
 			Value: proto.String(crawlCommand),
-			Uris: rendlerArtifacts,
+			Uris:  rendlerArtifacts,
 		},
 		Name:   proto.String("Crawler"),
 		Source: proto.String("rendering-crawler"),
@@ -82,7 +82,7 @@ func main() {
 		ExecutorId: &mesos.ExecutorID{Value: proto.String("render-executor")},
 		Command: &mesos.CommandInfo{
 			Value: proto.String(renderCommand),
-			Uris: rendlerArtifacts,
+			Uris:  rendlerArtifacts,
 		},
 		Name:   proto.String("Renderer"),
 		Source: proto.String("rendering-crawler"),
@@ -95,7 +95,7 @@ func main() {
 			TaskId: &mesos.TaskID{
 				Value: proto.String(fmt.Sprintf("RENDLER-%d", taskId)),
 			},
-			SlaveId:  offer.SlaveId,
+			SlaveId: offer.SlaveId,
 			Resources: []*mesos.Resource{
 				mesos.ScalarResource("cpus", TASK_CPUS),
 				mesos.ScalarResource("mem", TASK_MEM),
@@ -119,20 +119,19 @@ func main() {
 		return task
 	}
 
-
 	maxTasksForOffer := func(offer mesos.Offer) int {
-        // TODO(nnielsen): Parse offer resources.
-        count := 0
-        cpus := 1.0
-        mem := 64.0
+		// TODO(nnielsen): Parse offer resources.
+		count := 0
+		cpus := 1.0
+		mem := 64.0
 
-        for cpus >= TASK_CPUS && mem >= TASK_MEM {
-          count++
-          cpus -= TASK_CPUS
-          mem -= TASK_MEM
-        }
+		for cpus >= TASK_CPUS && mem >= TASK_MEM {
+			count++
+			cpus -= TASK_CPUS
+			mem -= TASK_MEM
+		}
 
-        return count
+		return count
 	}
 
 	printQueueStatistics := func() {
@@ -152,7 +151,7 @@ func main() {
 				driver *mesos.SchedulerDriver,
 				frameworkId mesos.FrameworkID,
 				masterInfo mesos.MasterInfo) {
-        log.Printf("Registered")
+				log.Printf("Registered")
 			},
 
 			ResourceOffers: func(driver *mesos.SchedulerDriver, offers []mesos.Offer) {
@@ -161,7 +160,7 @@ func main() {
 				for _, offer := range offers {
 					tasks := []mesos.TaskInfo{}
 
-					for i := 0; i < maxTasksForOffer(offer) / 2; i++ {
+					for i := 0; i < maxTasksForOffer(offer)/2; i++ {
 						if crawlQueue.Front() != nil {
 							url := crawlQueue.Front().Value.(string)
 							crawlQueue.Remove(crawlQueue.Front())
@@ -206,7 +205,7 @@ func main() {
 						log.Printf("Error deserializing CrawlResult: [%s]", err)
 					} else {
 						for _, link := range result.Links {
-							edge := Edge{From: result.URL, To: link,}
+							edge := Edge{From: result.URL, To: link}
 							log.Printf("Appending [%s] to crawl results", edge)
 							crawlResults.PushBack(edge)
 
@@ -262,18 +261,18 @@ func executorURIs() []*mesos.CommandInfo_URI {
 	}
 	baseURI := fmt.Sprintf("file://%s/", basePath)
 
-	pathToURI := func(path string, extract bool) *mesos.CommandInfo_URI{
+	pathToURI := func(path string, extract bool) *mesos.CommandInfo_URI {
 		return &mesos.CommandInfo_URI{
-			Value: &path,
+			Value:   &path,
 			Extract: &extract,
 		}
 	}
 
 	return []*mesos.CommandInfo_URI{
-		pathToURI(baseURI + "crawl_executor.py", false),
-		pathToURI(baseURI + "render.js", false),
-		pathToURI(baseURI + "render_executor.py", false),
-		pathToURI(baseURI + "results.py", false),
-		pathToURI(baseURI + "task_state.py", false),
+		pathToURI(baseURI+"crawl_executor.py", false),
+		pathToURI(baseURI+"render.js", false),
+		pathToURI(baseURI+"render_executor.py", false),
+		pathToURI(baseURI+"results.py", false),
+		pathToURI(baseURI+"task_state.py", false),
 	}
 }
