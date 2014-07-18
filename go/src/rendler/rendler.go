@@ -120,7 +120,7 @@ func main() {
 */
         count := 0
         cpus := 1.0 // TODO
-        mem := 16.0 // TODO
+        mem := 64.0 // TODO
 
         for cpus >= TASK_CPUS && mem >= TASK_MEM {
         	count++
@@ -162,15 +162,15 @@ func main() {
 
 					for i := 0; i < maxTasksForOffer(offer) / 2; i++ {
 						if crawlQueue.Front() != nil {
-							url := crawlQueue.Front().Value.(string)
+							url := crawlQueue.Front().Value.(*string)
 							crawlQueue.Remove(crawlQueue.Front())
-							task := makeCrawlTask(url, offer)
+							task := makeCrawlTask(*url, offer)
 							tasks = append(tasks, *task)
 						}
 						if renderQueue.Front() != nil {
-							url := renderQueue.Front().Value.(string)
+							url := renderQueue.Front().Value.(*string)
 							renderQueue.Remove(renderQueue.Front())
-							task := makeRenderTask(url, offer)
+							task := makeRenderTask(*url, offer)
 							tasks = append(tasks, *task)
 						}
 					}
