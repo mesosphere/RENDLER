@@ -33,13 +33,13 @@ class RenderExecutor(mesos.Executor):
         self.local = local
 
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
-        pass
+        print "RenderExecutor registered"
 
     def reregistered(self, driver, slaveInfo):
-        pass
+        print "RenderExecutor reregistered"
 
     def disconnected(self, driver):
-        pass
+        print "RenderExecutor disconnected"
 
     def launchTask(self, driver, task):
         def run_task():

@@ -30,13 +30,13 @@ import results
 
 class CrawlExecutor(mesos.Executor):
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
-      pass
+      print "CrawlExecutor registered"
 
     def reregistered(self, driver, slaveInfo):
-      pass
+      print "CrawlExecutor reregistered"
 
     def disconnected(self, driver):
-      pass
+      print "CrawlExecutor disconnected"
 
     def launchTask(self, driver, task):
         def run_task():
@@ -82,13 +82,14 @@ class CrawlExecutor(mesos.Executor):
         thread.start()
 
     def killTask(self, driver, taskId):
-      pass
+      shutdown(self, driver)
 
     def frameworkMessage(self, driver, message):
-      pass
+      print "Ignoring framework message: %s" % message
 
     def shutdown(self, driver):
-      pass
+      print "Shutting down"
+      sys.exit(0)
 
     def error(self, error, message):
       pass
