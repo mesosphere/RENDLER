@@ -25,7 +25,6 @@ func (e Edge) String() string {
 	return fmt.Sprintf("(%s, %s)", e.From, e.To)
 }
 
-//TODO(nnielsen): gofmt whole file.
 func main() {
 	crawlQueue := list.New()  // list of string
 	renderQueue := list.New() // list of string
@@ -187,6 +186,9 @@ func main() {
 				log.Printf("Received task status")
 
 				if *status.State == mesos.TaskState_TASK_FINISHED {
+					// TODO(nnielsen): Keep track of renderingers in flight and do
+					// graceful shutdown of framework (allow ongoing render tasks to
+					// finish).
 				}
 			},
 
