@@ -11,3 +11,9 @@ go install rendler
 ./bin/rendler -master <leading-master> -local
 ```
 
+### Generate graph
+
+```bash
+RENDLER_HOME=. ../bin/make-pdf
+```
+
