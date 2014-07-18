@@ -96,11 +96,13 @@ class RenderingCrawler(mesos.Scheduler):
                 driver.declineOffer(offer.id)
                 continue
 
-            print "maxTasksForOffer: [%d]" % self.maxTasksForOffer(offer)
+            maxTasks = self.maxTasksForOffer(offer)
+
+            print "maxTasksForOffer: [%d]" % maxTasks
 
             tasks = []
 
-            for i in range(self.maxTasksForOffer(offer) / 2):
+            for i in range(maxTasks / 2):
                 if self.crawlQueue:
                     crawlTaskUrl = self.crawlQueue.popleft()
                     task = self.makeCrawlTask(crawlTaskUrl, offer)

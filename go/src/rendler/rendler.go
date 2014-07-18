@@ -2,52 +2,137 @@ package main
 
 import (
 	"code.google.com/p/goprotobuf/proto"
+	"container/list"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"github.com/mesosphere/mesos-go/mesos"
-	"strconv"
+	"os"
+	"path/filepath"
 )
 
+const TASK_CPUS = 0.1
+const TASK_MEM = 32.0
+
+type Edge struct {
+	From string
+	To string
+}
+
+func (e Edge) String() string {
+	return fmt.Sprintf("(%s, %s)", e.From, e.To)
+}
+
 func main() {
+
+	crawlQueue := list.New() // list of string
+	renderQueue := list.New() // list of string
+
+	processedURLs := list.New() // list of string
+	crawlResults := list.New() // list of CrawlEdge
+	renderResults := make(map[string]string)
+
+	seedUrl := flag.String("seed", "http://mesosphere.io", "The first URL to crawl")
+	crawlQueue.PushBack(seedUrl)
+
 	taskLimit := 5
-	taskId := 0
+	tasksCreated := 0
+
 	exit := make(chan bool)
 
 	master := flag.String("master", "localhost:5050", "Location of leading Mesos master")
 	localMode := flag.Bool("--local", false, "If true, saves rendered web pages on local disk")
 	flag.Parse()
 
-	rendlerArtifact := "http://downloads.mesosphere.io/demo/rendler.tgz"
+	crawlCommand := "python crawl_executor.py"
+	renderCommand := "python render_executor.py"
+
+	if *localMode {
+		renderCommand += " --local"
+		crawlCommand += " --local"
+	}
+
+	rendlerArtifacts := executorURIs()
+
+	log.Println("Executor URIs:")
+	for i, artifact := range rendlerArtifacts {
+		log.Printf("\t%d: %s", i, *artifact.Value)
+	}
 
 	crawlExecutor := &mesos.ExecutorInfo{
 		ExecutorId: &mesos.ExecutorID{Value: proto.String("crawl-executor")},
 		Command: &mesos.CommandInfo{
-			Value: proto.String("python crawl_executor.py"),
-			Uris: []*mesos.CommandInfo_URI{
-				&mesos.CommandInfo_URI{Value: &rendlerArtifact},
-			},
+			Value: proto.String(crawlCommand),
+			Uris: rendlerArtifacts,
 		},
 		Name:   proto.String("Crawler"),
 		Source: proto.String("rendering-crawler"),
 	}
 
-	renderCommand := "python render_executor.py"
-
-	if *localMode {
-		renderCommand += " --local"
-	}
 
 	renderExecutor := &mesos.ExecutorInfo{
 		ExecutorId: &mesos.ExecutorID{Value: proto.String("render-executor")},
 		Command: &mesos.CommandInfo{
 			Value: proto.String(renderCommand),
-			Uris: []*mesos.CommandInfo_URI{
-				&mesos.CommandInfo_URI{Value: &rendlerArtifact},
-			},
+			Uris: rendlerArtifacts,
 		},
 		Name:   proto.String("Renderer"),
 		Source: proto.String("rendering-crawler"),
+	}
+
+	makeTaskPrototype := func(offer mesos.Offer) *mesos.TaskInfo {
+		taskId := tasksCreated
+		tasksCreated++
+		return &mesos.TaskInfo{
+			TaskId: &mesos.TaskID{
+				Value: proto.String(fmt.Sprintf("RENDLER-%d", taskId)),
+			},
+			SlaveId:  offer.SlaveId,
+			Resources: []*mesos.Resource{
+				mesos.ScalarResource("cpus", TASK_CPUS),
+				mesos.ScalarResource("mem", TASK_MEM),
+			},
+		}
+	}
+
+	makeCrawlTask := func(url string, offer mesos.Offer) *mesos.TaskInfo {
+		task := makeTaskPrototype(offer)
+		task.Name = proto.String("CRAWL_" + *task.TaskId.Value)
+		task.Executor = crawlExecutor
+		task.Data = []byte(url)
+		return task
+	}
+
+	makeRenderTask := func(url string, offer mesos.Offer) *mesos.TaskInfo {
+		task := makeTaskPrototype(offer)
+		task.Name = proto.String("RENDER_" + *task.TaskId.Value)
+		task.Executor = renderExecutor
+		task.Data = []byte(url)
+		return task
+	}
+
+
+	maxTasksForOffer := func(offer mesos.Offer) int {
+/*
+        cpus = next(rsc.scalar.value for rsc in offer.resources if rsc.name == "cpus")
+        mem = next(rsc.scalar.value for rsc in offer.resources if rsc.name == "mem")
+*/
+        count := 0
+        cpus := 1.0 // TODO
+        mem := 16.0 // TODO
+
+        for cpus >= TASK_CPUS && mem >= TASK_MEM {
+        	count++
+        	cpus -= TASK_CPUS
+        	mem -= TASK_MEM
+        }
+
+        return count
+	}
+
+	printQueueStatistics := func() {
+		// TODO
 	}
 
 	driver := mesos.SchedulerDriver{
@@ -67,31 +152,39 @@ func main() {
 			},
 
 			ResourceOffers: func(driver *mesos.SchedulerDriver, offers []mesos.Offer) {
-				for _, offer := range offers {
-					taskId++
-					fmt.Printf("Launching task: %d\n", taskId)
+				printQueueStatistics()
 
-					tasks := []mesos.TaskInfo{
-						mesos.TaskInfo{
-							Name: proto.String("go-task"),
-							TaskId: &mesos.TaskID{
-								Value: proto.String("go-task-" + strconv.Itoa(taskId)),
-							},
-							SlaveId:  offer.SlaveId,
-							Executor: crawlExecutor,
-							Resources: []*mesos.Resource{
-								mesos.ScalarResource("cpus", 1),
-								mesos.ScalarResource("mem", 512),
-							},
-						},
+				for _, offer := range offers {
+					maxTasks := maxTasksForOffer(offer)
+					log.Printf("maxTasksForOffer: [%d]", maxTasks)
+
+					tasks := []mesos.TaskInfo{}
+
+					for i := 0; i < maxTasksForOffer(offer) / 2; i++ {
+						if crawlQueue.Front() != nil {
+							url := crawlQueue.Front().Value.(string)
+							crawlQueue.Remove(crawlQueue.Front())
+							task := makeCrawlTask(url, offer)
+							tasks = append(tasks, *task)
+						}
+						if renderQueue.Front() != nil {
+							url := renderQueue.Front().Value.(string)
+							renderQueue.Remove(renderQueue.Front())
+							task := makeRenderTask(url, offer)
+							tasks = append(tasks, *task)
+						}
 					}
 
-					driver.LaunchTasks(offer.Id, tasks)
+					if len(tasks) == 0 {
+						driver.DeclineOffer(offer.Id)
+					} else {
+						driver.LaunchTasks(offer.Id, tasks)
+					}
 				}
 			},
 
 			StatusUpdate: func(driver *mesos.SchedulerDriver, status mesos.TaskStatus) {
-				fmt.Println("Received task status: " + *status.Message)
+				log.Printf("Received task status: " + *status.Message)
 
 				if *status.State == mesos.TaskState_TASK_FINISHED {
 					taskLimit--
@@ -109,27 +202,49 @@ func main() {
 
 				switch executorId.Value {
 				case crawlExecutor.ExecutorId.Value:
-					fmt.Printf("Received framework message from crawler")
-					var crawlResult CrawlResult
-					err := json.Unmarshal([]byte(message), &crawlResult)
+					log.Print("Received framework message from crawler")
+					var result CrawlResult
+					err := json.Unmarshal([]byte(message), &result)
 					if err != nil {
-						fmt.Printf("Error deserializing CrawlResult: [%s]", err)
+						log.Printf("Error deserializing CrawlResult: [%s]", err)
 					} else {
-						fmt.Printf("CrawlResult: [%s]", crawlResult)
+						for _, link := range result.Links {
+							edge := Edge{From: result.URL, To: link,}
+							log.Printf("Appending [%s] to crawl results", edge)
+							crawlResults.PushBack(edge)
+
+							alreadyProcessed := false
+							for e := processedURLs.Front(); e != nil && !alreadyProcessed; e = e.Next() {
+								processedURL := e.Value.(string)
+								if link == processedURL {
+									alreadyProcessed = true
+								}
+							}
+
+							if !alreadyProcessed {
+								log.Printf("Enqueueing [%s]", link)
+								crawlQueue.PushBack(link)
+								renderQueue.PushBack(link)
+								processedURLs.PushBack(link)
+							}
+						}
 					}
 
 				case renderExecutor.ExecutorId.Value:
-					fmt.Printf("Received framework message from renderer")
-					var renderResult RenderResult
-					err := json.Unmarshal([]byte(message), &renderResult)
+					log.Printf("Received framework message from renderer")
+					var result RenderResult
+					err := json.Unmarshal([]byte(message), &result)
 					if err != nil {
-						fmt.Printf("Error deserializing RenderResult: [%s]", err)
+						log.Printf("Error deserializing RenderResult: [%s]", err)
 					} else {
-						fmt.Printf("RenderResult: [%s]", renderResult)
+						log.Printf(
+							"Appending [%s] to render results",
+							Edge{From: result.URL, To: result.ImageURL})
+						renderResults[result.URL] = result.ImageURL
 					}
 
 				default:
-					fmt.Printf("Received a framework message from some unknown source")
+					log.Printf("Received a framework message from some unknown source")
 				}
 			},
 		},
@@ -143,25 +258,25 @@ func main() {
 	driver.Stop(false)
 }
 
-func makeTaskPrototype(offer mesos.Offer) {
-	// TODO
-}
+func executorURIs() []*mesos.CommandInfo_URI {
+	basePath, err := filepath.Abs(filepath.Dir(os.Args[0]) + "/../../..")
+	if err != nil {
+		log.Fatal("Failed to find the path to RENDLER")
+	}
+	baseURI := fmt.Sprintf("file://%s/", basePath)
 
-func makeCrawlTask(url string, offer mesos.Offer) {
-	// TODO
-}
+	pathToURI := func(path string, extract bool) *mesos.CommandInfo_URI{
+		return &mesos.CommandInfo_URI{
+			Value: &path,
+			Extract: &extract,
+		}
+	}
 
-func makeRenderTask(url string, offer mesos.Offer) {
-	// TODO
-}
-
-func maxTasksForOffer(offer mesos.Offer) {
-	// TODO
-}
-
-func printQueueStatistics(
-	crawlQueue []string,
-	renderQueue []string,
-	runningTasks int32) {
-	// TODO
+	return []*mesos.CommandInfo_URI{
+		pathToURI(baseURI + "crawl_executor.py", false),
+		pathToURI(baseURI + "render.js", false),
+		pathToURI(baseURI + "render_executor.py", false),
+		pathToURI(baseURI + "results.py", false),
+		pathToURI(baseURI + "task_state.py", false),
+	}
 }
