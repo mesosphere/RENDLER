@@ -38,6 +38,7 @@ func main() {
 	crawlQueue.PushBack(*seedUrl)
 
 	tasksCreated := 0
+	tasksRunning := 0
 
 	master := flag.String("master", "localhost:5050", "Location of leading Mesos master")
 	localMode := flag.Bool("local", false, "If true, saves rendered web pages on local disk")
@@ -184,9 +185,12 @@ func main() {
 			},
 
 			StatusUpdate: func(driver *mesos.SchedulerDriver, status mesos.TaskStatus) {
-				log.Printf("Received task status")
+				log.Printf("Received task status [%s] for task [%s]", nameFor(status.State), *status.TaskId.Value)
 
-				if *status.State == mesos.TaskState_TASK_FINISHED {
+				if *status.State == mesos.TaskState_TASK_RUNNING {
+					tasksRunning++
+				} else if isTerminal(status.State) {
+					tasksRunning--
 				}
 			},
 
