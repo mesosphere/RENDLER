@@ -25,7 +25,6 @@ func (e Edge) String() string {
 	return fmt.Sprintf("(%s, %s)", e.From, e.To)
 }
 
-//TODO(nnielsen): gofmt whole file.
 func main() {
 	crawlQueue := list.New()  // list of string
 	renderQueue := list.New() // list of string
@@ -46,6 +45,9 @@ func main() {
 
 	flag.Parse()
 
+	// TODO(nnielsen): based on `tasksRunning`, do
+	// graceful shutdown of framework (allow ongoing render tasks to
+	// finish).
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)
 	go func(c chan os.Signal) {
