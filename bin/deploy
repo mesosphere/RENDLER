@@ -2,9 +2,14 @@
 set -o errexit -o nounset -o pipefail
 
 RENDLER_HOME="$( cd "$( dirname "$0" )/.." && pwd )"
-RENDLER_ARTIFACT="$RENDLER_HOME/../rendler.tgz"
+RENDLER_ARTIFACT="$RENDLER_HOME/rendler.tgz"
 
 cd "$RENDLER_HOME"
 rm -f "$RENDLER_ARTIFACT"
-tar -czf "$RENDLER_ARTIFACT" *.py *.js
-s3cmd put "$RENDLER_ARTIFACT" s3://downloads.mesosphere.io/demo/
+tar -czf "$RENDLER_ARTIFACT" *.py *.js || die "Could not compress executors"
+echo "Compressed executors to $RENDLER_ARTIFACT"
+
+if [ "$#" -eq 1 ]; then
+  s3cmd put "$RENDLER_ARTIFACT" $1 || die "Could not s3 put to $1"
+  echo "Uploaded to $1"
+fi
