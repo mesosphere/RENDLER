@@ -13,7 +13,7 @@ RENDLER consists of three main components:
 
 ## Quick Start with Vagrant
 
-## Requirements
+### Requirements
 
 - [VirtualBox](http://www.virtualbox.org/) 4.1.18+
 - [Vagrant](http://www.vagrantup.com/) 1.3+
