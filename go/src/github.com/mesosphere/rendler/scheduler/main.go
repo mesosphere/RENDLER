@@ -7,7 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/mesosphere/mesos-go/mesos"
-  "github.com/mesosphere/rendler"
+	"github.com/mesosphere/rendler"
 	"log"
 	"os"
 	"os/signal"
@@ -68,7 +68,7 @@ func main() {
 			Value: proto.String(crawlCommand),
 			Uris:  rendlerArtifacts,
 		},
-		Name:   proto.String("Crawler"),
+		Name: proto.String("Crawler"),
 	}
 
 	renderExecutor := &mesos.ExecutorInfo{
@@ -77,7 +77,7 @@ func main() {
 			Value: proto.String(renderCommand),
 			Uris:  rendlerArtifacts,
 		},
-		Name:   proto.String("Renderer"),
+		Name: proto.String("Renderer"),
 	}
 
 	makeTaskPrototype := func(offer mesos.Offer) *mesos.TaskInfo {
