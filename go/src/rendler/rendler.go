@@ -126,18 +126,18 @@ func main() {
 		// TODO(nnielsen): Parse offer resources.
 		count := 0
 
-    var cpus float64 = 0
-    var mem float64 = 0
+		var cpus float64 = 0
+		var mem float64 = 0
 
-    for _, resource := range offer.Resources {
-      if resource.GetName() == "cpus" {
-        cpus = *resource.GetScalar().Value
-      }
+		for _, resource := range offer.Resources {
+			if resource.GetName() == "cpus" {
+				cpus = *resource.GetScalar().Value
+			}
 
-      if resource.GetName() == "mem" {
-        mem = *resource.GetScalar().Value
-      }
-    }
+			if resource.GetName() == "mem" {
+				mem = *resource.GetScalar().Value
+			}
+		}
 
 		for cpus >= TASK_CPUS && mem >= TASK_MEM {
 			count++
