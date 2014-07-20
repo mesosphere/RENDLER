@@ -17,17 +17,6 @@ import (
 const TASK_CPUS = 0.1
 const TASK_MEM = 32.0
 
-// See the Mesos Framework Development Guide:
-// http://mesos.apache.org/documentation/latest/app-framework-development-guide
-//
-// Scheduler, scheduler driver, executor, and executor driver definitions:
-// https://github.com/apache/mesos/blob/master/src/python/src/mesos.py
-// https://github.com/apache/mesos/blob/master/include/mesos/scheduler.hpp
-//
-// Mesos protocol buffer definitions for Python:
-// https://github.com/mesosphere/deimos/blob/master/deimos/mesos_pb2.py
-// https://github.com/apache/mesos/blob/master/include/mesos/mesos.proto
-//
 func main() {
 	crawlQueue := list.New()  // list of string
 	renderQueue := list.New() // list of string
@@ -109,18 +98,16 @@ func main() {
 	makeCrawlTask := func(url string, offer mesos.Offer) *mesos.TaskInfo {
 		task := makeTaskPrototype(offer)
 		task.Name = proto.String("CRAWL_" + *task.TaskId.Value)
-    //
-    // TODO
-    //
+		task.Executor = crawlExecutor
+		task.Data = []byte(url)
 		return task
 	}
 
 	makeRenderTask := func(url string, offer mesos.Offer) *mesos.TaskInfo {
 		task := makeTaskPrototype(offer)
 		task.Name = proto.String("RENDER_" + *task.TaskId.Value)
-    //
-    // TODO
-    //
+		task.Executor = renderExecutor
+		task.Data = []byte(url)
 		return task
 	}
 
@@ -141,9 +128,11 @@ func main() {
 			}
 		}
 
-    //
-    // TODO
-    //
+		for cpus >= TASK_CPUS && mem >= TASK_MEM {
+			count++
+			cpus -= TASK_CPUS
+			mem -= TASK_MEM
+		}
 
 		return count
 	}
@@ -171,9 +160,30 @@ func main() {
 			ResourceOffers: func(driver *mesos.SchedulerDriver, offers []mesos.Offer) {
 				printQueueStatistics()
 
-        //
-        // TODO
-        //
+				for _, offer := range offers {
+					tasks := []mesos.TaskInfo{}
+
+					for i := 0; i < maxTasksForOffer(offer)/2; i++ {
+						if crawlQueue.Front() != nil {
+							url := crawlQueue.Front().Value.(string)
+							crawlQueue.Remove(crawlQueue.Front())
+							task := makeCrawlTask(url, offer)
+							tasks = append(tasks, *task)
+						}
+						if renderQueue.Front() != nil {
+							url := renderQueue.Front().Value.(string)
+							renderQueue.Remove(renderQueue.Front())
+							task := makeRenderTask(url, offer)
+							tasks = append(tasks, *task)
+						}
+					}
+
+					if len(tasks) == 0 {
+						driver.DeclineOffer(offer.Id)
+					} else {
+						driver.LaunchTasks(offer.Id, tasks)
+					}
+				}
 			},
 
 			StatusUpdate: func(driver *mesos.SchedulerDriver, status mesos.TaskStatus) {
@@ -200,9 +210,26 @@ func main() {
 					if err != nil {
 						log.Printf("Error deserializing CrawlResult: [%s]", err)
 					} else {
-            //
-            // TODO
-            //
+						for _, link := range result.Links {
+							edge := rendler.Edge{From: result.URL, To: link}
+							log.Printf("Appending [%s] to crawl results", edge)
+							crawlResults.PushBack(edge)
+
+							alreadyProcessed := false
+							for e := processedURLs.Front(); e != nil && !alreadyProcessed; e = e.Next() {
+								processedURL := e.Value.(string)
+								if link == processedURL {
+									alreadyProcessed = true
+								}
+							}
+
+							if !alreadyProcessed {
+								log.Printf("Enqueueing [%s]", link)
+								crawlQueue.PushBack(link)
+								renderQueue.PushBack(link)
+								processedURLs.PushBack(link)
+							}
+						}
 					}
 
 				case *renderExecutor.ExecutorId.Value:
@@ -212,9 +239,10 @@ func main() {
 					if err != nil {
 						log.Printf("Error deserializing RenderResult: [%s]", err)
 					} else {
-            //
-            // TODO
-            //
+						log.Printf(
+							"Appending [%s] to render results",
+							rendler.Edge{From: result.URL, To: result.ImageURL})
+						renderResults[result.URL] = result.ImageURL
 					}
 
 				default:
