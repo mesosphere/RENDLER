@@ -109,7 +109,7 @@ class RenderingCrawler(mesos.Scheduler):
                     tasks.append(task)
                 if self.renderQueue:
                     renderTaskUrl = self.renderQueue.popleft()
-                    task = self.makeRenderTask(crawlTaskUrl, offer)
+                    task = self.makeRenderTask(renderTaskUrl, offer)
                     tasks.append(task)
 
             if tasks:
@@ -125,7 +125,7 @@ class RenderingCrawler(mesos.Scheduler):
 
         if update.state == 1:  # Running
             self.tasksRunning += 1
-        elif update.state > 1: # Terminal state
+        elif self.tasksRunning > 0 and update.state > 1: # Terminal state
             self.tasksRunning -= 1
 
     def frameworkMessage(self, driver, executorId, slaveId, message):
@@ -162,7 +162,6 @@ if __name__ == "__main__":
     crawlExecutor.command.value = "python crawl_executor.py"
     crawlExecutor.command.uris.add().value = rendlerArtifact
     crawlExecutor.name = "Crawler"
-    crawlExecutor.source = "rendering-crawler"
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
@@ -173,22 +172,14 @@ if __name__ == "__main__":
 
     renderExecutor.command.uris.add().value = rendlerArtifact
     renderExecutor.name = "Renderer"
-    renderExecutor.source = "rendering-crawler"
 
     framework = mesos_pb2.FrameworkInfo()
     framework.user = "" # Have Mesos fill in the current user.
-    framework.name = "rendering-crawler"
-
-    if os.getenv("MESOS_CHECKPOINT"):
-        print "Enabling checkpoint for the framework"
-        framework.checkpoint = True
+    framework.name = "RENDLER"
 
     rendler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
 
-    driver = mesos.MesosSchedulerDriver(
-        rendler,
-        framework,
-        sys.argv[2])
+    driver = mesos.MesosSchedulerDriver(rendler, framework, sys.argv[2])
 
     # driver.run() blocks; we run it in a separate thread
     def run_driver_async():
