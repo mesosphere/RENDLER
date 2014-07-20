@@ -125,8 +125,19 @@ func main() {
 	maxTasksForOffer := func(offer mesos.Offer) int {
 		// TODO(nnielsen): Parse offer resources.
 		count := 0
-		cpus := 1.0
-		mem := 64.0
+
+    var cpus float64 = 0
+    var mem float64 = 0
+
+    for _, resource := range offer.Resources {
+      if resource.GetName() == "cpus" {
+        cpus = *resource.GetScalar().Value
+      }
+
+      if resource.GetName() == "mem" {
+        mem = *resource.GetScalar().Value
+      }
+    }
 
 		for cpus >= TASK_CPUS && mem >= TASK_MEM {
 			count++
