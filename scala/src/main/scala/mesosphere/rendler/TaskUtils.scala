@@ -41,7 +41,7 @@ trait TaskUtils {
 
   lazy val renderExecutor: Protos.ExecutorInfo = {
     val command = Protos.CommandInfo.newBuilder
-      .setValue("python render_executor.py")
+      .setValue("python render_executor.py --local")
       .addAllUris(rendlerUris.asJava)
     Protos.ExecutorInfo.newBuilder
       .setExecutorId(Protos.ExecutorID.newBuilder.setValue("render-executor"))
@@ -75,8 +75,8 @@ trait TaskUtils {
     url: String,
     offer: Protos.Offer): Protos.TaskInfo =
     makeTaskPrototype(id, offer).toBuilder
-      .setName(s"render_$id")
-      .setExecutor(renderExecutor)
+      .setName(s"crawl_$id")
+      .setExecutor(crawlExecutor)
       .setData(ByteString.copyFromUtf8(url))
       .build
 
@@ -85,7 +85,7 @@ trait TaskUtils {
     url: String,
     offer: Protos.Offer): Protos.TaskInfo =
     makeTaskPrototype(id, offer).toBuilder
-      .setName(s"crawl_$id")
+      .setName(s"render_$id")
       .setExecutor(renderExecutor)
       .setData(ByteString.copyFromUtf8(url))
       .build

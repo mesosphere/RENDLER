@@ -57,7 +57,7 @@ object Rendler {
     System.in.read()
 
     // graceful shutdown
-    val maxWait = 30.seconds
+    val maxWait = 2.minutes
     try {
       Await.ready(scheduler.shutdown(driver.stop()), maxWait)
     }

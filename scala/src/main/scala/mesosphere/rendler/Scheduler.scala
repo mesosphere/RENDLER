@@ -12,8 +12,9 @@ import java.nio.charset.Charset
 
 class Scheduler(val rendlerHome: File, seedURL: String)
     extends mesos.Scheduler
+    with ResultProtocol
     with TaskUtils
-    with ResultProtocol {
+    with GraphVizUtils {
 
   protected[this] val crawlQueue = mutable.Queue[String](seedURL)
   protected[this] val renderQueue = mutable.Queue[String]()
@@ -30,7 +31,8 @@ class Scheduler(val rendlerHome: File, seedURL: String)
     Future {
       shuttingDown = true
       println("Scheduler shutting down...")
-      while (tasksRunning > 0) Thread.sleep(1000)
+      while (tasksRunning > 0) Thread.sleep(500)
+      writeDot(crawlResults, renderResults.toMap, new File(rendlerHome, "result.dot"))
       callback
     }
 
