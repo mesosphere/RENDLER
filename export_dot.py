@@ -55,4 +55,4 @@ def dot(url_list, render_map, output_file):
   f.write("}\n")
   f.close()
 
-  print "Results writing to " + output_file
+  print "Writing results to " + output_file
