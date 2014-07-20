@@ -53,8 +53,9 @@ object Rendler {
     // driver.run blocks; therefore run in a separate thread
     Future { driver.run }
 
-    // wait for input
-    System.in.read()
+    // wait for the enter key
+    val NEWLINE = '\n'.toInt
+    while (System.in.read != NEWLINE) { /* do nothing */ }
 
     // graceful shutdown
     val maxWait = 2.minutes
