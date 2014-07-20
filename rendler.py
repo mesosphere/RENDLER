@@ -163,19 +163,33 @@ if __name__ == "__main__":
         print "Usage: %s seedUrl mesosMasterUrl" % sys.argv[0]
         sys.exit(1)
 
-    rendlerArtifact = "/home/vagrant/hostfiles/rendler.tgz"
+    uris = [ "crawl_executor.py",
+             "export_dot.py",
+             "render.js",
+             "render_executor.py",
+             "results.py",
+             "task_state.py" ]
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
     crawlExecutor.command.value = "python crawl_executor.py"
-    crawlExecutor.command.uris.add().value = rendlerArtifact
+
+    for uri in uris:
+        uri_proto = crawlExecutor.command.uris.add()
+        uri_proto.value = "/home/vagrant/hostfiles/" + uri
+        uri_proto.extract = False
+
     crawlExecutor.name = "Crawler"
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
     renderExecutor.command.value = "python render_executor.py --local"
 
-    renderExecutor.command.uris.add().value = rendlerArtifact
+    for uri in uris:
+        uri_proto = renderExecutor.command.uris.add()
+        uri_proto.value = "/home/vagrant/hostfiles/" + uri
+        uri_proto.extract = False
+
     renderExecutor.name = "Renderer"
 
     framework = mesos_pb2.FrameworkInfo()
