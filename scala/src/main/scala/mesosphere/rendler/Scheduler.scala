@@ -51,9 +51,9 @@ class Scheduler(val rendlerHome: File, seedURL: String)
     data: Array[Byte]): Unit = {
     import play.api.libs.json._
 
-    val jsonString = new String(data, Charset.forName("UTF-8"))
+    println(s"Received a framework message from [${executorId.getValue}]")
 
-    println(s"Received framework message [$jsonString]")
+    val jsonString = new String(data, Charset.forName("UTF-8"))
 
     executorId.getValue match {
       case id if id == crawlExecutor.getExecutorId.getValue =>
