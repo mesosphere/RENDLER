@@ -148,6 +148,16 @@ class RenderingCrawler(mesos.Scheduler):
             print "Appending [%s] to render results" % repr((result.url, result.imageUrl))
             self.renderResults[result.url] = result.imageUrl
 
+def shutdown(signal, frame):
+    print "Rendler is shutting down"
+    rendler.shuttingDown = True
+    while rendler.tasksRunning > 0:
+        time.sleep(1)
+    driver.stop()
+    export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
+    print "Goodbye!"
+    sys.exit(0)
+
 if __name__ == "__main__":
     if len(sys.argv) < 3 or len(sys.argv) > 4:
         print "Usage: %s seedUrl mesosMasterUrl [--local]" % sys.argv[0]
@@ -189,15 +199,6 @@ if __name__ == "__main__":
 
     Thread(target = run_driver_async, args = ()).start()
 
-    # Listen for CTRL+D
-    while True:
-        line = sys.stdin.readline()
-        if not line:
-            print "Rendler is shutting down"
-            rendler.shuttingDown = True
-            while rendler.tasksRunning > 0:
-                time.sleep(1)
-            driver.stop()
-            export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
-            print "Goodbye!"
-            sys.exit(0)
+    print "(Listening for Ctrl-C)"
+    signal.signal(signal.SIGINT, shutdown)
+    while True: time.sleep(1)
