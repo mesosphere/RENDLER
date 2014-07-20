@@ -159,13 +159,11 @@ def shutdown(signal, frame):
     sys.exit(0)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print "Usage: %s seedUrl mesosMasterUrl [--local]" % sys.argv[0]
+    if len(sys.argv) != 3:
+        print "Usage: %s seedUrl mesosMasterUrl" % sys.argv[0]
         sys.exit(1)
 
-    localMode = len(sys.argv) == 4 and sys.argv[3] == "--local"
-
-    rendlerArtifact = "http://downloads.mesosphere.io/demo/rendler.tgz"
+    rendlerArtifact = "/home/vagrant/hostfiles/rendler.tgz"
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
@@ -175,10 +173,7 @@ if __name__ == "__main__":
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
-
-    renderExecutor.command.value = "python render_executor.py"
-    if localMode:
-        renderExecutor.command.value += " --local"
+    renderExecutor.command.value = "python render_executor.py --local"
 
     renderExecutor.command.uris.add().value = rendlerArtifact
     renderExecutor.name = "Renderer"
