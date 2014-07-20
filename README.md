@@ -47,6 +47,11 @@ vagrant@mesos:hostfiles $ python rendler.py http://mesosphere.io 127.0.1.1:5050
 # <Ctrl+C> to stop...
 ```
 
+#### Not into Python?
+
+Check out alternative implementations of the RENDLER scheduler in the `go` and
+`scala` directories.  Feel free to contribute your own!
+
 ### Generating a pdf of your render graph output
 With [GraphViz](http://www.graphviz.org) (`which dot`) installed:
 
