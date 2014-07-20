@@ -39,10 +39,7 @@ You can see that 1 slave is registered and you've got some idle CPUs and Memory.
 ```bash
 $ vagrant ssh
 vagrant@mesos:~ $ cd hostfiles
-# First compress & "deploy" the executors
-vagrant@mesos:hostfiles $ bin/deploy
-Compressed executors to /home/vagrant/hostfiles/rendler.tgz
-# Now start the scheduler with the seed url and the mesos master ip
+# Start the scheduler with the seed url and the mesos master ip
 vagrant@mesos:hostfiles $ python rendler.py http://mesosphere.io 127.0.1.1:5050
 # <Ctrl+C> to stop...
 ```
