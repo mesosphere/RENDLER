@@ -17,7 +17,7 @@ class Scheduler(val rendlerHome: File, seedURL: String)
     with GraphVizUtils {
 
   protected[this] val crawlQueue = mutable.Queue[String](seedURL)
-  protected[this] val renderQueue = mutable.Queue[String]()
+  protected[this] val renderQueue = mutable.Queue[String](seedURL)
 
   protected[this] val processedURLs = mutable.Set[String]()
   protected[this] val crawlResults = mutable.Buffer[Edge]()
@@ -135,7 +135,7 @@ class Scheduler(val rendlerHome: File, seedURL: String)
             tasksCreated = tasksCreated + 1
           }
           if (renderQueue.nonEmpty) {
-            val url = crawlQueue.dequeue
+            val url = renderQueue.dequeue
             tasks += makeRenderTask(s"$tasksCreated", url, offer)
             tasksCreated = tasksCreated + 1
           }
