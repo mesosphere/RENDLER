@@ -34,16 +34,16 @@ func main() {
 	renderResults := make(map[string]string)
 
 	seedUrl := flag.String("seed", "http://mesosphere.io", "The first URL to crawl")
+	master := flag.String("master", "127.0.1.1:5050", "Location of leading Mesos master")
+	localMode := flag.Bool("local", true, "If true, saves rendered web pages on local disk")
+	// TODO(nnielsen): Add flag for artifacts.
+
+	flag.Parse()
+
 	crawlQueue.PushBack(*seedUrl)
 
 	tasksCreated := 0
 	tasksRunning := 0
-
-	master := flag.String("master", "localhost:5050", "Location of leading Mesos master")
-	localMode := flag.Bool("local", false, "If true, saves rendered web pages on local disk")
-	// TODO(nnielsen): Add flag for artifacts.
-
-	flag.Parse()
 
 	// TODO(nnielsen): based on `tasksRunning`, do
 	// graceful shutdown of framework (allow ongoing render tasks to
@@ -65,7 +65,6 @@ func main() {
 
 	if *localMode {
 		renderCommand += " --local"
-		crawlCommand += " --local"
 	}
 
 	// TODO(nnielsen): In local mode, verify artifact locations.
@@ -78,7 +77,6 @@ func main() {
 			Uris:  rendlerArtifacts,
 		},
 		Name:   proto.String("Crawler"),
-		Source: proto.String("rendering-crawler"),
 	}
 
 	renderExecutor := &mesos.ExecutorInfo{
@@ -88,7 +86,6 @@ func main() {
 			Uris:  rendlerArtifacts,
 		},
 		Name:   proto.String("Renderer"),
-		Source: proto.String("rendering-crawler"),
 	}
 
 	makeTaskPrototype := func(offer mesos.Offer) *mesos.TaskInfo {
@@ -276,7 +273,7 @@ func executorURIs() []*mesos.CommandInfo_URI {
 	if err != nil {
 		log.Fatal("Failed to find the path to RENDLER")
 	}
-	baseURI := fmt.Sprintf("file://%s/", basePath)
+	baseURI := fmt.Sprintf("%s/", basePath)
 
 	pathToURI := func(path string, extract bool) *mesos.CommandInfo_URI {
 		return &mesos.CommandInfo_URI{
