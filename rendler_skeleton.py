@@ -17,14 +17,16 @@ import export_dot
 TASK_CPUS = 0.1
 TASK_MEM = 32
 
-# Mesos Framework Development Guide:
+# See the Mesos Framework Development Guide:
 # http://mesos.apache.org/documentation/latest/app-framework-development-guide
 #
 # Scheduler, scheduler driver, executor, and executor driver definitions:
 # https://github.com/apache/mesos/blob/master/src/python/src/mesos.py
+# https://github.com/apache/mesos/blob/master/include/mesos/scheduler.hpp
 #
 # Mesos protocol buffer definitions for Python:
 # https://github.com/mesosphere/deimos/blob/master/deimos/mesos_pb2.py
+# https://github.com/apache/mesos/blob/master/include/mesos/mesos.proto
 #
 class RenderingCrawler(mesos.Scheduler):
     def __init__(self, seedUrl, crawlExecutor, renderExecutor):
@@ -41,6 +43,7 @@ class RenderingCrawler(mesos.Scheduler):
         self.renderResults = {}
         self.tasksCreated  = 0
         self.tasksRunning = 0
+        self.shuttingDown = False
 
     def registered(self, driver, frameworkId, masterInfo):
         """
@@ -130,6 +133,7 @@ class RenderingCrawler(mesos.Scheduler):
           tasks will fail with a TASK_LOST status and a message saying as much).
         """
         self.printQueueStatistics()
+        print "Received resource offer(s)"
         #
         # TODO
         #
@@ -201,52 +205,47 @@ class RenderingCrawler(mesos.Scheduler):
           scheduler driver.  The driver will be aborted BEFORE invoking this
           callback.
         """
-        print("Error from Mesos: %s " % message, file=sys.stderr)
+        print "Error from Mesos: %s " % message
+
+def shutdown(signal, frame):
+    print "Rendler is shutting down"
+    rendler.shuttingDown = True
+    while rendler.tasksRunning > 0:
+        time.sleep(1)
+    driver.stop()
+    export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
+    print "Goodbye!"
+    sys.exit(0)
 
 #
 # Execution entry point:
 #
 if __name__ == "__main__":
-    if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print "Usage: %s seedUrl mesosMasterUrl [--local]" % sys.argv[0]
+    if len(sys.argv) != 3:
+        print "Usage: %s seedUrl mesosMasterUrl" % sys.argv[0]
         sys.exit(1)
 
-    localMode = len(sys.argv) == 4 and sys.argv[3] == "--local"
-
-    rendlerArtifact = "http://downloads.mesosphere.io/demo/rendler.tgz"
+    rendlerArtifact = "/home/vagrant/hostfiles/rendler.tgz"
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
     crawlExecutor.command.value = "python crawl_executor.py"
     crawlExecutor.command.uris.add().value = rendlerArtifact
     crawlExecutor.name = "Crawler"
-    crawlExecutor.source = "rendering-crawler"
 
     renderExecutor = mesos_pb2.ExecutorInfo()
     renderExecutor.executor_id.value = "render-executor"
-
-    renderExecutor.command.value = "python render_executor.py"
-    if localMode:
-        renderExecutor.command.value += " --local"
-
+    renderExecutor.command.value = "python render_executor.py --local"
     renderExecutor.command.uris.add().value = rendlerArtifact
     renderExecutor.name = "Renderer"
-    renderExecutor.source = "rendering-crawler"
 
     framework = mesos_pb2.FrameworkInfo()
     framework.user = "" # Have Mesos fill in the current user.
-    framework.name = "rendering-crawler"
+    framework.name = "RENDLER"
 
-    if os.getenv("MESOS_CHECKPOINT"):
-        print "Enabling checkpoint for the framework"
-        framework.checkpoint = True
+    rendler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
 
-    crawler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
-
-    driver = mesos.MesosSchedulerDriver(
-        crawler,
-        framework,
-        sys.argv[2])
+    driver = mesos.MesosSchedulerDriver(rendler, framework, sys.argv[2])
 
     # driver.run() blocks; we run it in a separate thread
     def run_driver_async():
@@ -256,12 +255,6 @@ if __name__ == "__main__":
 
     Thread(target = run_driver_async, args = ()).start()
 
-    # Listen for CTRL+D
-    while True:
-        line = sys.stdin.readline()
-        if not line:
-            print "Rendler is shutting down"
-            driver.stop()
-            export_dot.dot(crawler.crawlResults, crawler.renderResults, "result.dot")
-            print "Goodbye!"
-            sys.exit(0)
+    print "(Listening for Ctrl-C)"
+    signal.signal(signal.SIGINT, shutdown)
+    while True: time.sleep(1)
