@@ -2,6 +2,9 @@ package mesosphere.rendler
 
 import org.apache.mesos._
 import scala.concurrent.duration._
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import java.io.File
 
 object Rendler {
@@ -47,6 +50,23 @@ object Rendler {
     val driver: SchedulerDriver =
       new MesosSchedulerDriver(scheduler, frameworkInfo, mesosMaster)
 
-    driver.run
+    // driver.run blocks; therefore run in a separate thread
+    Future { driver.run }
+
+    // wait for input
+    System.in.read()
+
+    // graceful shutdown
+    val maxWait = 30.seconds
+    try {
+      Await.ready(scheduler.shutdown(driver.stop()), maxWait)
+    }
+    catch {
+      case toe: java.util.concurrent.TimeoutException =>
+        println(s"Shutdown timed out after [${maxWait.toSeconds}] seconds")
+    }
+    finally {
+      sys.exit(0)
+    }
   }
 }

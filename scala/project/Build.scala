@@ -70,6 +70,8 @@ object RendlerBuild extends Build {
       pathToMesosLibs
     ),
 
+    connectInput in run := true,
+
     fork in run := true,
 
     fork in Test := true

@@ -5,6 +5,8 @@ import mesos._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import java.io.File
 import java.nio.charset.Charset
 
@@ -23,6 +25,14 @@ class Scheduler(val rendlerHome: File, seedURL: String)
   private[this] var tasksCreated = 0
   private[this] var tasksRunning = 0
   private[this] var shuttingDown: Boolean = false
+
+  def shutdown[T](callback: => T): Future[T] =
+    Future {
+      shuttingDown = true
+      println("Scheduler shutting down...")
+      while (tasksRunning > 0) Thread.sleep(1000)
+      callback
+    }
 
   def printQueueStatistics(): Unit = println(s"""
     |Queue Statistics:
