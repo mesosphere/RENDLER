@@ -1,7 +1,7 @@
 RENDLER :interrobang:
 =====================
 
-A rendering web crawler for Apache Mesos.
+A rendering web-crawler framework for [Apache Mesos](http://mesos.apache.org/).
 
 ![YES RENDLER](http://img.pandawhale.com/57451-Jim-Carrey-Riddler-upvote-gif-NVsA.gif)
 
@@ -13,7 +13,13 @@ RENDLER consists of three main components:
 
 ## Quick Start with Vagrant
 
-**Start the `mesos-demo` VM**
+## Requirements
+
+- [VirtualBox](http://www.virtualbox.org/) 4.1.18+
+- [Vagrant](http://www.vagrantup.com/) 1.3+
+- [git](http://git-scm.com/downloads) (command line tool)
+
+### Start the `mesos-demo` VM
 
 ```bash
 $ wget http://downloads.mesosphere.io/demo/mesos-demo.box -O /tmp/mesos-demo.box
@@ -26,51 +32,61 @@ $ vagrant up
 Now that the VM is running, you can view the Mesos Web UI here:
 [http://10.141.141.10:5050](http://10.141.141.10:5050)
 
-**Run RENDLER in the `mesos-demo` VM**
+You can see that 1 slave is registered and you've got some idle CPUs and Memory. So let's start the Rendler!
+
+### Run RENDLER in the `mesos-demo` VM
 
 ```bash
 $ vagrant ssh
-vagrant@mesos $ cd hostfiles
-vagrant@mesos $ python rendler.py http://wikipedia.org 127.0.1.1:5050 --local
-# <ctrl+D> to stop...
-vagrant@mesos $ bin/make-pdf
-Wrote graph to '/home/vagrant/hostfiles/result.pdf'
+vagrant@mesos:~ $ cd hostfiles
+# First compress & "deploy" the executors
+vagrant@mesos:hostfiles $ bin/deploy
+Compressed executors to /home/vagrant/hostfiles/rendler.tgz
+# Now start the scheduler with the seed url and the mesos master ip
+vagrant@mesos:hostfiles $ python rendler.py http://mesosphere.io 127.0.1.1:5050
+# <Ctrl+C> to stop...
+```
+
+### Generating a pdf of your render graph output
+With [GraphViz](http://www.graphviz.org) (`which dot`) installed:
+
+```bash
+vagrant@mesos:hostfiles $ bin/make-pdf
+Generating '/home/vagrant/hostfiles/result.pdf'
 ```
 
 Open `result.pdf` in your favorite viewer to see the rendered result!
 
-### Installing Dependencies:
-**Beautiful Soup:** Used by the Crawl Executor to extract links from webpages.
+**Sample Output**
+
+![Sample Crawl Crawl](http://downloads.mesosphere.io/demo/sample_output.png)
+
+### Shutting down the `mesos-demo` VM
 
 ```bash
-$ sudo easy_install beautifulsoup4
+# Exit out of the VM
+vagrant@mesos:hostfiles $ exit
+# Stop the VM
+$ vagrant halt
+# To delete all traces of the vagrant machine
+$ vagrant destroy
 ```
 
-**Phantomjs:** Used by the Render Executor to render a webpage into a png.
+## Rendler Architecture
 
-```bash
-$ sudo brew install phantomjs
-```
-
-**Wget:** Used by the Dot Export Script to fetch rendered images from s3.
-
-```bash
-$ sudo easy_install wget
-```
-
-## Crawl Executor
+### Crawl Executor
 
 - Interprets incoming tasks' `task.data` field as a URL
 - Fetches the resource, extracts links from the document
 - Sends a framework message to the scheduler containing the crawl result.
 
-## Render Executor
+### Render Executor
 
 - Interprets incoming tasks' `task.data` field as a URL
 - Fetches the resource, saves a png image to a location accessible to the scheduler.
 - Sends a framework message to the scheduler containing the render result.
 
-## Intermediate Data Structures
+### Intermediate Data Structures
 
 We define some common data types to facilitate communication between the scheduler
 and the executors.  Their default representation is JSON.
@@ -91,9 +107,9 @@ results.RenderResult(
 )
 ```
 
-## Scheduler
+### Rendler Scheduler
 
-### Data Structures
+#### Data Structures
 
 - `crawlQueue`: list of urls
 - `renderQueue`: list of urls
@@ -101,7 +117,7 @@ results.RenderResult(
 - `crawlResults`: list of url tuples
 - `renderResults`: map of urls to imageUrls
 
-### Scheduler Behavior
+#### Scheduler Behavior
 
 The scheduler accepts one URL as a command-line parameter to seed the render
 and crawl queues.
@@ -120,14 +136,3 @@ and crawl queues.
    declines resource offers to make them available to other frameworks running
    on the cluster.
 
-### Generating a pdf of your render graph output
-**With [GraphViz](http://www.graphviz.org) installed:**
-
-```bash
-$ ./bin/make-pdf
-Wrote graph to '/home/vagrant/hostfiles/result.pdf'
-```
-
-### Sample Output
-
-![Sample Crawl Crawl](http://downloads.mesosphere.io/demo/sample_output.png)
