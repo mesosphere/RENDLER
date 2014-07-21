@@ -3,7 +3,7 @@ RENDLER :interrobang:
 
 A rendering web-crawler framework for [Apache Mesos](http://mesos.apache.org/).
 
-![YES RENDLER](http://img.pandawhale.com/57451-Jim-Carrey-Riddler-upvote-gif-NVsA.gif)
+![YES RENDLER](./riddler.jpg?raw=true "RENDLER") 
 
 RENDLER consists of three main components:
 
