@@ -5,6 +5,8 @@ A rendering web-crawler framework for [Apache Mesos](http://mesos.apache.org/).
 
 ![YES RENDLER](./riddler.jpg?raw=true "RENDLER") 
 
+See the [accompanying slides](http://mesosphere.github.io/oscon-mesos-2014/#/) for more context.
+
 RENDLER consists of three main components:
 
 - `CrawlExecutor` extends `mesos.Executor`
