@@ -6,6 +6,7 @@ import os
 import signal
 import sys
 import time
+import datetime
 from threading import Thread
 
 import mesos
@@ -16,6 +17,7 @@ import export_dot
 
 TASK_CPUS = 0.1
 TASK_MEM = 32
+SHUTDOWN_TIMEOUT = 30  # in seconds
 
 # See the Mesos Framework Development Guide:
 # http://mesos.apache.org/documentation/latest/app-framework-development-guide
@@ -155,8 +157,15 @@ class RenderingCrawler(mesos.Scheduler):
 def shutdown(signal, frame):
     print "Rendler is shutting down"
     rendler.shuttingDown = True
-    while rendler.tasksRunning > 0:
+    
+    wait_started = datetime.datetime.now()
+    while (rendler.tasksRunning > 0) and \
+      (SHUTDOWN_TIMEOUT > (datetime.datetime.now() - wait_started).total_seconds()):
         time.sleep(1)
+    
+    if (rendler.tasksRunning > 0):
+        print "Shutdown by timeout, %i task(s) have not completed" % rendler.tasksRunning
+        
     driver.stop()
     export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
     print "Goodbye!"
