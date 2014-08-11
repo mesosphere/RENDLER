@@ -125,6 +125,10 @@ class RenderingCrawler(mesos.Scheduler):
 
         if update.state == 1:  # Running
             self.tasksRunning += 1
+        elif update.state == 3:  # Failed
+            self.tasksRunning -= 1  # consider rescheduling the task
+            print "Task [%s] failed with message \"%s\"" \
+                % (update.task_id.value, update.message)
         elif self.tasksRunning > 0 and update.state > 1: # Terminal state
             self.tasksRunning -= 1
 
