@@ -19,6 +19,7 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <unistd.h>
 #include <iostream>
 #include <functional>
 #include <string>
@@ -186,7 +187,9 @@ public:
         }
       }
     } else {
-      renderResults[url] = strVector[2];
+      if (access(strVector[2].c_str(), R_OK) == 0) {
+        renderResults[url] = strVector[2];
+      }
     }
     frameworkMessagesReceived++;
   }
