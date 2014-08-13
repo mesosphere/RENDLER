@@ -19,6 +19,7 @@
 #include <libgen.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <signal.h>
 #include <unistd.h>
 #include <iostream>
 #include <functional>
@@ -51,7 +52,10 @@ static map<string, string> renderResults;
 static map<string, size_t> processed;
 static size_t nextUrlId = 0;
 
+MesosSchedulerDriver* schedulerDriver;
+
 static void shutdown();
+static void SIGINTHandler();
 
 class Rendler : public Scheduler
 {
@@ -260,6 +264,16 @@ static void shutdown()
   fclose(f);
 }
 
+static void SIGINTHandler(int signum)
+{
+  if (schedulerDriver != NULL) {
+    shutdown();
+    schedulerDriver->stop();
+  }
+  delete schedulerDriver;
+  exit(0);
+}
+
 #define shift argc--,argv++
 int main(int argc, char** argv)
 {
@@ -308,19 +322,24 @@ int main(int argc, char** argv)
   framework.set_user(""); // Have Mesos fill in the current user.
   framework.set_name("Rendler Framework (C++)");
   //framework.set_role(role);
-
   framework.set_principal("rendler-cpp");
-  MesosSchedulerDriver* driver = new MesosSchedulerDriver(&scheduler,
-                                                          framework,
-                                                          master);
 
-  int status = driver->run() == DRIVER_STOPPED ? 0 : 1;
+  // Set up the signal handler for SIGINT for clean shutdown.
+  struct sigaction action;
+  action.sa_handler = SIGINTHandler;
+  sigemptyset(&action.sa_mask);
+  action.sa_flags = 0;
+  sigaction(SIGINT, &action, NULL);
+
+  schedulerDriver = new MesosSchedulerDriver(&scheduler, framework, master);
+
+  int status = schedulerDriver->run() == DRIVER_STOPPED ? 0 : 1;
 
   // Ensure that the driver process terminates.
-  driver->stop();
+  schedulerDriver->stop();
 
   shutdown();
 
-  delete driver;
+  delete schedulerDriver;
   return status;
 }
