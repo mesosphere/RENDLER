@@ -119,6 +119,10 @@ class RenderingCrawler(mesos.Scheduler):
 
     def resourceOffers(self, driver, offers):
         self.printStatistics()
+        
+        if not self.crawlQueue and not self.renderQueue and self.tasksRunning <= 0:
+            print "Nothing to do, RENDLER is shutting down"
+            hard_shutdown()
 
         for offer in offers:
             print "Got resource offer [%s]" % offer.id.value
@@ -187,8 +191,11 @@ class RenderingCrawler(mesos.Scheduler):
             print "Appending [%s] to render results" % repr((result.url, result.imageUrl))
             self.renderResults[result.url] = result.imageUrl
 
-def shutdown(signal, frame):
-    print "Rendler is shutting down"
+def hard_shutdown():  
+    driver.stop()
+
+def graceful_shutdown(signal, frame):
+    print "RENDLER is shutting down"
     rendler.shuttingDown = True
     
     wait_started = datetime.datetime.now()
@@ -198,11 +205,8 @@ def shutdown(signal, frame):
     
     if (rendler.tasksRunning > 0):
         print "Shutdown by timeout, %d task(s) have not completed" % rendler.tasksRunning
-        
-    driver.stop()
-    export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
-    print "Goodbye!"
-    sys.exit(0)
+
+    hard_shutdown()
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -251,9 +255,14 @@ if __name__ == "__main__":
         status = 0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1
         driver.stop()
         sys.exit(status)
-
-    Thread(target = run_driver_async, args = ()).start()
+    framework_thread = Thread(target = run_driver_async, args = ())
+    framework_thread.start()
 
     print "(Listening for Ctrl-C)"
-    signal.signal(signal.SIGINT, shutdown)
-    while True: time.sleep(1)
+    signal.signal(signal.SIGINT, graceful_shutdown)
+    while framework_thread.is_alive():
+        time.sleep(1)
+
+    export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
+    print "Goodbye!"
+    sys.exit(0)
