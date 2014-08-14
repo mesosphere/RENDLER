@@ -19,7 +19,7 @@ TASK_CPUS = 0.1
 TASK_MEM = 32
 SHUTDOWN_TIMEOUT = 30  # in seconds
 LEADING_ZEROS_COUNT = 5  # appended to task ID to facilitate lexicographical order
-RETRY_ATTEMPTS = 5  # how many times a failed task is retried
+TASK_ATTEMPTS = 5  # how many times a task is attempted
 
 CRAWLER_TASK_SUFFIX = "-crwl"
 RENDER_TASK_SUFFIX = "-rndr"
@@ -83,13 +83,13 @@ class RenderingCrawler(mesos.Scheduler):
     
     def retryTask(self, task_id, url):
         if not url in self.tasksRetrying:
-            self.tasksRetrying[url] = 0
+            self.tasksRetrying[url] = 1
             
-        if self.tasksRetrying[url] < RETRY_ATTEMPTS:
+        if self.tasksRetrying[url] < TASK_ATTEMPTS:
             self.tasksRetrying[url] += 1
             ordinal = lambda n: "%d%s" % (n, \
               "tsnrhtdd"[(n / 10 % 10 != 1) * (n % 10 < 4) * n % 10::4])
-            print "%s retry for \"%s\"" % \
+            print "%s try for \"%s\"" % \
               (ordinal(self.tasksRetrying[url]), url)
 
             # TODO(alex): replace this by checking TaskStatus.executor_id,
@@ -100,7 +100,7 @@ class RenderingCrawler(mesos.Scheduler):
               self.renderQueue.append(url)
         else:
             self.tasksFailed += 1
-            print "Task for \"%s\" cannot be completed, retry limit reached" % url
+            print "Task for \"%s\" cannot be completed, attempt limit reached" % url
 
     def printStatistics(self):
         print "Queue length: %d crawl, %d render; Tasks: %d running, %d failed" % (
