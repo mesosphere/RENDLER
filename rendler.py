@@ -19,6 +19,8 @@ TASK_CPUS = 0.1
 TASK_MEM = 32
 SHUTDOWN_TIMEOUT = 30  # in seconds
 LEADING_ZEROS_COUNT = 5  # appended to task ID to facilitate lexicographical order
+RETRY_ATTEMPTS = 5  # how many times a failed task is retried
+
 CRAWLER_TASK_SUFFIX = "-crwl"
 RENDER_TASK_SUFFIX = "-rndr"
 
@@ -40,6 +42,7 @@ class RenderingCrawler(mesos.Scheduler):
         self.renderResults = {}
         self.tasksCreated  = 0
         self.tasksRunning = 0
+        self.tasksRetrying = {}
         self.shuttingDown = False
 
     def registered(self, driver, frameworkId, masterInfo):
@@ -76,6 +79,25 @@ class RenderingCrawler(mesos.Scheduler):
         task.executor.MergeFrom(self.renderExecutor)
         task.data = str(url)
         return task
+    
+    def retryTask(self, task_id, url):
+        if not url in self.tasksRetrying:
+            self.tasksRetrying[url] = 0
+            
+        if self.tasksRetrying[url] < RETRY_ATTEMPTS:
+            self.tasksRetrying[url] += 1
+            ordinal = lambda n: "%d%s" % (n, \
+              "tsnrhtdd"[(n / 10 % 10 != 1) * (n % 10 < 4) * n % 10::4])
+            print "%s retry for \"%s\"" % \
+              (ordinal(self.tasksRetrying[url]), url)
+
+            # TODO: replace this by checking TaskStatus.executor_id
+            if task_id.endswith(CRAWLER_TASK_SUFFIX):
+              self.crawlQueue.append(url)
+            elif task_id.endswith(RENDER_TASK_SUFFIX):
+              self.renderQueue.append(url)
+        else:
+            print "Task for \"%s\" cannot be completed, retry limit reached" % url
 
     def printQueueStatistics(self):
         print "Crawl queue length: %d, Render queue length: %d, Running tasks: %d" % (
@@ -132,10 +154,13 @@ class RenderingCrawler(mesos.Scheduler):
 
         if update.state == 1:  # Running
             self.tasksRunning += 1
-        elif update.state == 3:  # Failed
-            self.tasksRunning -= 1  # consider rescheduling the task
+            
+        elif update.state == 3:  # Failed, retry
             print "Task [%s] failed with message \"%s\"" \
-                % (update.task_id.value, update.message)
+              % (update.task_id.value, update.message)
+            self.tasksRunning -= 1
+            self.retryTask(update.task_id.value, update.data)
+       
         elif self.tasksRunning > 0 and update.state > 1: # Terminal state
             self.tasksRunning -= 1
 
