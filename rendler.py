@@ -42,6 +42,7 @@ class RenderingCrawler(mesos.Scheduler):
         self.renderResults = {}
         self.tasksCreated  = 0
         self.tasksRunning = 0
+        self.tasksFailed = 0
         self.tasksRetrying = {}
         self.shuttingDown = False
 
@@ -91,17 +92,19 @@ class RenderingCrawler(mesos.Scheduler):
             print "%s retry for \"%s\"" % \
               (ordinal(self.tasksRetrying[url]), url)
 
-            # TODO: replace this by checking TaskStatus.executor_id
+            # TODO(alex): replace this by checking TaskStatus.executor_id,
+            # which is available in mesos 0.20
             if task_id.endswith(CRAWLER_TASK_SUFFIX):
               self.crawlQueue.append(url)
             elif task_id.endswith(RENDER_TASK_SUFFIX):
               self.renderQueue.append(url)
         else:
+            self.tasksFailed += 1
             print "Task for \"%s\" cannot be completed, retry limit reached" % url
 
-    def printQueueStatistics(self):
-        print "Crawl queue length: %d, Render queue length: %d, Running tasks: %d" % (
-            len(self.crawlQueue), len(self.renderQueue), self.tasksRunning
+    def printStatistics(self):
+        print "Queue length: %d crawl, %d render; Tasks: %d running, %d failed" % (
+          len(self.crawlQueue), len(self.renderQueue), self.tasksRunning, self.tasksFailed
         )
 
     def maxTasksForOffer(self, offer):
@@ -115,7 +118,7 @@ class RenderingCrawler(mesos.Scheduler):
         return count
 
     def resourceOffers(self, driver, offers):
-        self.printQueueStatistics()
+        self.printStatistics()
 
         for offer in offers:
             print "Got resource offer [%s]" % offer.id.value
@@ -194,7 +197,7 @@ def shutdown(signal, frame):
         time.sleep(1)
     
     if (rendler.tasksRunning > 0):
-        print "Shutdown by timeout, %i task(s) have not completed" % rendler.tasksRunning
+        print "Shutdown by timeout, %d task(s) have not completed" % rendler.tasksRunning
         
     driver.stop()
     export_dot.dot(rendler.crawlResults, rendler.renderResults, "result.dot")
