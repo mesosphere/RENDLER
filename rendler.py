@@ -19,6 +19,8 @@ TASK_CPUS = 0.1
 TASK_MEM = 32
 SHUTDOWN_TIMEOUT = 30  # in seconds
 LEADING_ZEROS_COUNT = 5  # appended to task ID to facilitate lexicographical order
+CRAWLER_TASK_SUFFIX = "-crwl"
+RENDER_TASK_SUFFIX = "-rndr"
 
 # See the Mesos Framework Development Guide:
 # http://mesos.apache.org/documentation/latest/app-framework-development-guide
@@ -62,7 +64,7 @@ class RenderingCrawler(mesos.Scheduler):
     def makeCrawlTask(self, url, offer):
         task = self.makeTaskPrototype(offer)
         task.name = "crawl task %s" % task.task_id.value
-        task.task_id.value += '-crwl'
+        task.task_id.value += CRAWLER_TASK_SUFFIX
         task.executor.MergeFrom(self.crawlExecutor)
         task.data = str(url)
         return task
@@ -70,7 +72,7 @@ class RenderingCrawler(mesos.Scheduler):
     def makeRenderTask(self, url, offer):
         task = self.makeTaskPrototype(offer)
         task.name = "render task %s" % task.task_id.value
-        task.task_id.value += '-rndr'
+        task.task_id.value += RENDER_TASK_SUFFIX
         task.executor.MergeFrom(self.renderExecutor)
         task.data = str(url)
         return task
