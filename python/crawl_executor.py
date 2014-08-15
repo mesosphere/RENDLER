@@ -57,6 +57,7 @@ class CrawlExecutor(mesos.Executor):
                 update.task_id.value = task.task_id.value
                 update.state = mesos_pb2.TASK_FAILED
                 update.message = error_msg
+                update.data = url
                 
                 driver.sendStatusUpdate(update)
                 print error_msg

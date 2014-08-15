@@ -219,12 +219,15 @@ if __name__ == "__main__":
         print "Usage: %s seedUrl mesosMasterUrl" % sys.argv[0]
         sys.exit(1)
 
+    baseURI = "/home/vagrant/hostfiles"
+    suffixURI = "python"
     uris = [ "crawl_executor.py",
              "export_dot.py",
-             "render.js",
              "render_executor.py",
              "results.py",
              "task_state.py" ]
+    uris = [os.path.join(baseURI, suffixURI, uri) for uri in uris]
+    uris.append(os.path.join(baseURI, "render.js"))
 
     crawlExecutor = mesos_pb2.ExecutorInfo()
     crawlExecutor.executor_id.value = "crawl-executor"
@@ -232,7 +235,7 @@ if __name__ == "__main__":
 
     for uri in uris:
         uri_proto = crawlExecutor.command.uris.add()
-        uri_proto.value = "/home/vagrant/hostfiles/" + uri
+        uri_proto.value = uri
         uri_proto.extract = False
 
     crawlExecutor.name = "Crawler"
@@ -243,7 +246,7 @@ if __name__ == "__main__":
 
     for uri in uris:
         uri_proto = renderExecutor.command.uris.add()
-        uri_proto.value = "/home/vagrant/hostfiles/" + uri
+        uri_proto.value = uri
         uri_proto.extract = False
 
     renderExecutor.name = "Renderer"
