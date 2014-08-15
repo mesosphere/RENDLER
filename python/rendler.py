@@ -214,9 +214,12 @@ def graceful_shutdown(signal, frame):
 
     hard_shutdown()
 
+#
+# Execution entry point:
+#
 if __name__ == "__main__":
     if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print "Usage: %s seedUrl mesosMasterUrl" % sys.argv[0]
+        print "Usage: %s seedUrl mesosMasterUrl [maxRenderTasks]" % sys.argv[0]
         sys.exit(1)
 
     baseURI = "/home/vagrant/hostfiles"
