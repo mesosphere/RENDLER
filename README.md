@@ -38,18 +38,14 @@ You can see that 1 slave is registered and you've got some idle CPUs and Memory.
 
 ### Run RENDLER in the `mesos-demo` VM
 
-```bash
-$ vagrant ssh
-vagrant@mesos:~ $ cd hostfiles
-# Start the scheduler with the seed url and the mesos master ip
-vagrant@mesos:hostfiles $ python rendler.py http://mesosphere.io 127.0.1.1:5050
-# <Ctrl+C> to stop...
-```
+Check implementations of the RENDLER scheduler in the `python`, `go`, and
+`scala` directories. Run instructions are here:
 
-#### Not into Python?
+- [Python RENDLER framework](python/README.md)
+- [Go RENDLER framework](go/README.md)
+- [Scala RENDLER framework](scala/README.md)
 
-Check out alternative implementations of the RENDLER scheduler in the `go` and
-`scala` directories.  Feel free to contribute your own!
+Feel free to contribute your own!
 
 ### Generating a pdf of your render graph output
 With [GraphViz](http://www.graphviz.org) (`which dot`) installed:
