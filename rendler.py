@@ -28,7 +28,7 @@ RENDER_TASK_SUFFIX = "-rndr"
 # http://mesos.apache.org/documentation/latest/app-framework-development-guide
 
 class RenderingCrawler(mesos.Scheduler):
-    def __init__(self, seedUrl, crawlExecutor, renderExecutor):
+    def __init__(self, seedUrl, maxRenderTasks, crawlExecutor, renderExecutor):
         print "RENDLER"
         print "======="
         print "seedUrl: [%s]\n" % seedUrl
@@ -44,6 +44,8 @@ class RenderingCrawler(mesos.Scheduler):
         self.tasksRunning = 0
         self.tasksFailed = 0
         self.tasksRetrying = {}
+        self.renderLimitReached = False
+        self.maxRenderTasks = maxRenderTasks
         self.shuttingDown = False
 
     def registered(self, driver, frameworkId, masterInfo):
@@ -180,7 +182,11 @@ class RenderingCrawler(mesos.Scheduler):
                 edge = (result.url, link)
                 print "Appending [%s] to crawl results" % repr(edge)
                 self.crawlResults.add(edge)
-                if not link in self.processedURLs:
+                if not self.renderLimitReached and self.maxRenderTasks > 0 and \
+                  self.maxRenderTasks <= len(self.processedURLs):
+                    print "Render task limit (%d) reached" % self.maxRenderTasks
+                    self.renderLimitReached = True
+                if not link in self.processedURLs and not self.renderLimitReached:
                     print "Enqueueing [%s]" % link
                     self.crawlQueue.append(link)
                     self.renderQueue.append(link)
@@ -209,7 +215,7 @@ def graceful_shutdown(signal, frame):
     hard_shutdown()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
         print "Usage: %s seedUrl mesosMasterUrl" % sys.argv[0]
         sys.exit(1)
 
@@ -246,7 +252,9 @@ if __name__ == "__main__":
     framework.user = "" # Have Mesos fill in the current user.
     framework.name = "RENDLER"
 
-    rendler = RenderingCrawler(sys.argv[1], crawlExecutor, renderExecutor)
+    try: maxRenderTasks = int(sys.argv[3])
+    except: maxRenderTasks = 0
+    rendler = RenderingCrawler(sys.argv[1], maxRenderTasks, crawlExecutor, renderExecutor)
 
     driver = mesos.MesosSchedulerDriver(rendler, framework, sys.argv[2])
 
