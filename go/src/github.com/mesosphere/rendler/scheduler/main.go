@@ -275,10 +275,10 @@ func executorURIs() []*mesos.CommandInfo_URI {
 	}
 
 	return []*mesos.CommandInfo_URI{
-		pathToURI(baseURI+"crawl_executor.py", false),
 		pathToURI(baseURI+"render.js", false),
-		pathToURI(baseURI+"render_executor.py", false),
-		pathToURI(baseURI+"results.py", false),
-		pathToURI(baseURI+"task_state.py", false),
+		pathToURI(baseURI+"python/crawl_executor.py", false),
+		pathToURI(baseURI+"python/render_executor.py", false),
+		pathToURI(baseURI+"python/results.py", false),
+		pathToURI(baseURI+"python/task_state.py", false),
 	}
 }
