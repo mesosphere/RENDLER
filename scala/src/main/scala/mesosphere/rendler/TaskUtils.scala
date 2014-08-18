@@ -14,12 +14,12 @@ trait TaskUtils {
 
   protected[this] val rendlerUris: Seq[Protos.CommandInfo.URI] =
     Seq(
-      "crawl_executor.py",
-      "export_dot.py",
       "render.js",
-      "render_executor.py",
-      "results.py",
-      "task_state.py"
+      "python/crawl_executor.py",
+      "python/export_dot.py",
+      "python/render_executor.py",
+      "python/results.py",
+      "python/task_state.py"
     ).map {
         fName =>
           Protos.CommandInfo.URI.newBuilder
