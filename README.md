@@ -21,13 +21,11 @@ RENDLER consists of three main components:
 - [Vagrant](http://www.vagrantup.com/) 1.3+
 - [git](http://git-scm.com/downloads) (command line tool)
 
-### Start the `mesos-demo` VM
+### Start the `mesoscon` VM
 
 ```bash
-$ wget http://downloads.mesosphere.io/demo/mesoscon.box -O /tmp/mesoscon.box
-$ vagrant box add --name mesos-demo /tmp/mesoscon.box
-$ git clone https://github.com/mesosphere/RENDLER.git
-$ cd RENDLER
+$ vagrant box add --name mesoscon /tmp/mesoscon.box
+$ cd sandbox
 $ vagrant up
 ```
 
@@ -36,7 +34,7 @@ Now that the VM is running, you can view the Mesos Web UI here:
 
 You can see that 1 slave is registered and you've got some idle CPUs and Memory. So let's start the Rendler!
 
-### Run RENDLER in the `mesos-demo` VM
+### Run RENDLER in the `mesoscon` VM
 
 Check implementations of the RENDLER scheduler in the `python`, `go`,
 `scala`, and `cpp` directories. Run instructions are here:
@@ -44,7 +42,7 @@ Check implementations of the RENDLER scheduler in the `python`, `go`,
 - [Python RENDLER framework](python/README.md)
 - [Go RENDLER framework](go/README.md)
 - [Scala RENDLER framework](scala/README.md)
-- [C++ RENDLER framework](cpp/README.md)
+- [C++ RENDLER framework](cpp/README)
 
 Feel free to contribute your own!
 
@@ -52,8 +50,8 @@ Feel free to contribute your own!
 With [GraphViz](http://www.graphviz.org) (`which dot`) installed:
 
 ```bash
-vagrant@mesos:hostfiles $ bin/make-pdf
-Generating '/home/vagrant/hostfiles/result.pdf'
+vagrant@mesos:sandbox $ bin/make-pdf
+Generating '/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER/result.pdf'
 ```
 
 Open `result.pdf` in your favorite viewer to see the rendered result!
@@ -62,11 +60,11 @@ Open `result.pdf` in your favorite viewer to see the rendered result!
 
 ![Sample Crawl Crawl](http://downloads.mesosphere.io/demo/sample_output.png)
 
-### Shutting down the `mesos-demo` VM
+### Shutting down the `mesoscon` VM
 
 ```bash
 # Exit out of the VM
-vagrant@mesos:hostfiles $ exit
+vagrant@mesos:sandbox $ exit
 # Stop the VM
 $ vagrant halt
 # To delete all traces of the vagrant machine
