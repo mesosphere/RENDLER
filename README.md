@@ -24,8 +24,8 @@ RENDLER consists of three main components:
 ### Start the `mesos-demo` VM
 
 ```bash
-$ wget http://downloads.mesosphere.io/demo/mesos-demo.box -O /tmp/mesos-demo.box
-$ vagrant box add --name mesos-demo /tmp/mesos-demo.box
+$ wget http://downloads.mesosphere.io/demo/mesoscon.box -O /tmp/mesoscon.box
+$ vagrant box add --name mesos-demo /tmp/mesoscon.box
 $ git clone https://github.com/mesosphere/RENDLER.git
 $ cd RENDLER
 $ vagrant up
@@ -38,12 +38,13 @@ You can see that 1 slave is registered and you've got some idle CPUs and Memory.
 
 ### Run RENDLER in the `mesos-demo` VM
 
-Check implementations of the RENDLER scheduler in the `python`, `go`, and
-`scala` directories. Run instructions are here:
+Check implementations of the RENDLER scheduler in the `python`, `go`,
+`scala`, and `cpp` directories. Run instructions are here:
 
 - [Python RENDLER framework](python/README.md)
 - [Go RENDLER framework](go/README.md)
 - [Scala RENDLER framework](scala/README.md)
+- [C++ RENDLER framework](cpp/README.md)
 
 Feel free to contribute your own!
 
