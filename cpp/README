@@ -12,7 +12,7 @@ Dependencies:
 Assumptions:
 ===========
 - CPUs per task: 0.2
-- Memory per task: 32 (MB?)
+- Memory per task: 32 MB
 
 Limitations/Features:
 ====================
