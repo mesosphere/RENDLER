@@ -48,7 +48,21 @@ class CrawlExecutor(mesos.Executor):
 
             url = task.data
 
-            source = urllib.urlopen(url).read()
+            source = ""
+            try:
+                source = urllib.urlopen(url).read()
+            except:
+                error_msg = "Could not read resource at %s" % url
+                update = mesos_pb2.TaskStatus()
+                update.task_id.value = task.task_id.value
+                update.state = mesos_pb2.TASK_FAILED
+                update.message = error_msg
+                update.data = url
+                
+                driver.sendStatusUpdate(update)
+                print error_msg
+                return
+                
             soup = BeautifulSoup(source)
 
             links = []

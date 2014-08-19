@@ -11,11 +11,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 	"path/filepath"
 )
 
 const TASK_CPUS = 0.1
 const TASK_MEM = 32.0
+const SHUTDOWN_TIMEOUT = 30  // in seconds
 
 func main() {
 	crawlQueue := list.New()  // list of string
@@ -36,21 +38,7 @@ func main() {
 
 	tasksCreated := 0
 	tasksRunning := 0
-
-	// TODO(nnielsen): based on `tasksRunning`, do
-	// graceful shutdown of framework (allow ongoing render tasks to
-	// finish).
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill)
-	go func(c chan os.Signal) {
-		s := <-c
-		fmt.Println("Got signal:", s)
-
-		if s == os.Interrupt {
-			rendler.WriteDOTFile(crawlResults, renderResults)
-		}
-		os.Exit(1)
-	}(c)
+	shuttingDown := false
 
 	crawlCommand := "python crawl_executor.py"
 	renderCommand := "python render_executor.py"
@@ -161,6 +149,12 @@ func main() {
 				printQueueStatistics()
 
 				for _, offer := range offers {
+					if shuttingDown {
+						fmt.Println("Shutting down: declining offer on [", offer.Hostname, "]")
+						driver.DeclineOffer(offer.Id)
+						continue
+					}
+
 					tasks := []mesos.TaskInfo{}
 
 					for i := 0; i < maxTasksForOffer(offer)/2; i++ {
@@ -252,12 +246,36 @@ func main() {
 		},
 	}
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	go func(c chan os.Signal) {
+		s := <-c
+		fmt.Println("Got signal:", s)
+
+		if s == os.Interrupt {
+			fmt.Println("RENDLER is shutting down")
+			shuttingDown = true
+			wait_started := time.Now()
+			for tasksRunning > 0 && SHUTDOWN_TIMEOUT > int(time.Since(wait_started).Seconds()) {
+				time.Sleep(time.Second)
+			}
+
+			if tasksRunning > 0 {
+				fmt.Println("Shutdown by timeout,", tasksRunning, "task(s) have not completed")
+			}
+
+			driver.Stop(false)
+		}
+	}(c)
+
 	driver.Init()
 	defer driver.Destroy()
 
 	driver.Start()
 	driver.Join()
 	driver.Stop(false)
+	rendler.WriteDOTFile(crawlResults, renderResults)
+	os.Exit(0)
 }
 
 func executorURIs() []*mesos.CommandInfo_URI {
@@ -275,10 +293,10 @@ func executorURIs() []*mesos.CommandInfo_URI {
 	}
 
 	return []*mesos.CommandInfo_URI{
-		pathToURI(baseURI+"crawl_executor.py", false),
 		pathToURI(baseURI+"render.js", false),
-		pathToURI(baseURI+"render_executor.py", false),
-		pathToURI(baseURI+"results.py", false),
-		pathToURI(baseURI+"task_state.py", false),
+		pathToURI(baseURI+"python/crawl_executor.py", false),
+		pathToURI(baseURI+"python/render_executor.py", false),
+		pathToURI(baseURI+"python/results.py", false),
+		pathToURI(baseURI+"python/task_state.py", false),
 	}
 }
