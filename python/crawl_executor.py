@@ -24,11 +24,17 @@ import time
 import urlparse, urllib, sys
 from bs4 import BeautifulSoup
 
-import mesos
-import mesos_pb2
+try:
+    from mesos.native import MesosExecutorDriver, MesosSchedulerDriver
+    from mesos.interface import Executor, Scheduler
+    from mesos.interface import mesos_pb2
+except ImportError:
+    from mesos import Executor, MesosExecutorDriver, MesosSchedulerDriver, Scheduler
+    import mesos_pb2
+
 import results
 
-class CrawlExecutor(mesos.Executor):
+class CrawlExecutor(Executor):
     def registered(self, driver, executorInfo, frameworkInfo, slaveInfo):
       print "CrawlExecutor registered"
 
@@ -110,5 +116,5 @@ class CrawlExecutor(mesos.Executor):
 
 if __name__ == "__main__":
     print "Starting Launching Executor (LE)"
-    driver = mesos.MesosExecutorDriver(CrawlExecutor())
+    driver = MesosExecutorDriver(CrawlExecutor())
     sys.exit(0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1)

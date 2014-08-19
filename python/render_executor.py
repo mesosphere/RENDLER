@@ -24,11 +24,17 @@ import threading
 import time
 import uuid
 
-import mesos
-import mesos_pb2
+try:
+    from mesos.native import MesosExecutorDriver, MesosSchedulerDriver
+    from mesos.interface import Executor, Scheduler
+    from mesos.interface import mesos_pb2
+except ImportError:
+    from mesos import Executor, MesosExecutorDriver, MesosSchedulerDriver, Scheduler
+    import mesos_pb2
+
 import results
 
-class RenderExecutor(mesos.Executor):
+class RenderExecutor(Executor):
     def __init__(self, local):
         self.local = local
 
@@ -107,5 +113,5 @@ if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "--local":
       local = True
 
-    driver = mesos.MesosExecutorDriver(RenderExecutor(local))
+    driver = MesosExecutorDriver(RenderExecutor(local))
     sys.exit(0 if driver.run() == mesos_pb2.DRIVER_STOPPED else 1)

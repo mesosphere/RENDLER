@@ -9,8 +9,14 @@ import time
 import datetime
 from threading import Thread
 
-import mesos
-import mesos_pb2
+try:
+    from mesos.native import MesosExecutorDriver, MesosSchedulerDriver
+    from mesos.interface import Executor, Scheduler
+    from mesos.interface import mesos_pb2
+except ImportError:
+    from mesos import Executor, MesosExecutorDriver, MesosSchedulerDriver, Scheduler
+    import mesos_pb2
+
 import results
 import task_state
 import export_dot
@@ -27,7 +33,7 @@ RENDER_TASK_SUFFIX = "-rndr"
 # See the Mesos Framework Development Guide:
 # http://mesos.apache.org/documentation/latest/app-framework-development-guide
 
-class RenderingCrawler(mesos.Scheduler):
+class RenderingCrawler(Scheduler):
     def __init__(self, seedUrl, maxRenderTasks, crawlExecutor, renderExecutor):
         print "RENDLER"
         print "======="
@@ -262,7 +268,7 @@ if __name__ == "__main__":
     except: maxRenderTasks = 0
     rendler = RenderingCrawler(sys.argv[1], maxRenderTasks, crawlExecutor, renderExecutor)
 
-    driver = mesos.MesosSchedulerDriver(rendler, framework, sys.argv[2])
+    driver = MesosSchedulerDriver(rendler, framework, sys.argv[2])
 
     # driver.run() blocks; we run it in a separate thread
     def run_driver_async():
