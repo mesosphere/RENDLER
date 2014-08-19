@@ -43,7 +43,8 @@ object Rendler {
     """.stripMargin)
 
     // TODO: get RENDLER_HOME from environment or args
-    val rendlerHome = new File("/home/vagrant/hostfiles")
+    val rendlerHome =
+      new File("/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER")
 
     val scheduler = new Scheduler(rendlerHome, seedURL)
 

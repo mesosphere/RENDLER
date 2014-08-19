@@ -265,7 +265,7 @@ if __name__ == "__main__":
         print "Usage: %s seedUrl mesosMasterUrl [maxRenderTasks]" % sys.argv[0]
         sys.exit(1)
 
-    baseURI = "/home/vagrant/hostfiles"
+    baseURI = "/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER"
     suffixURI = "python"
     uris = [ "crawl_executor.py",
              "export_dot.py",
