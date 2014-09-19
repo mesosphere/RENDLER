@@ -66,6 +66,10 @@ public class RenderExecutor implements Executor {
     @Override
     public void error(ExecutorDriver driver, String message) {}
     
+    public static void main(String[] args) throws Exception {
+        MesosExecutorDriver driver = new MesosExecutorDriver(new RenderExecutor());
+        System.exit(driver.run() == Status.DRIVER_STOPPED ? 0 : 1);
+    }
     
     
 }

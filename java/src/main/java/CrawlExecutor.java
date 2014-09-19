@@ -23,6 +23,7 @@ public class CrawlExecutor implements Executor {
 
     @Override
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
+        System.out.println("In CrawlExecutor - Launch task!");
         //start task with status running
         TaskStatus status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
@@ -93,5 +94,11 @@ public class CrawlExecutor implements Executor {
     
     @Override
     public void error(ExecutorDriver driver, String message) {}
+    
+    public static void main(String[] args) throws Exception {
+        MesosExecutorDriver driver = new MesosExecutorDriver(new CrawlExecutor());
+        System.exit(driver.run() == Status.DRIVER_STOPPED ? 0 : 1);
+    }
+    
     
 }
