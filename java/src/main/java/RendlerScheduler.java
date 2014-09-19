@@ -8,14 +8,21 @@ import java.net.*;
 import com.google.protobuf.ByteString;
 
 public class RendlerScheduler implements Scheduler {
+    
+    private List<String> crawlQueue;
+    private List<String> completedCrawlQueue;
+    
 	public RendlerScheduler(ExecutorInfo executor) {
 		this(executor, 5);
 	}
     
 	public RendlerScheduler(ExecutorInfo executor, int totalTasks) {
 		this.executor = executor;
-        System.out.println("Executor" + executor.getName());
 		this.totalTasks = totalTasks;
+        this.crawlQueue = Collections.synchronizedList(new ArrayList<String>());
+        this.completedCrawlQueue = Collections.synchronizedList(new ArrayList<String>());
+        crawlQueue.add("http://mesosphere.io/");
+        
 	}
     
 	@Override
@@ -36,12 +43,11 @@ public class RendlerScheduler implements Scheduler {
                                List<Offer> offers) {
 		for (Offer offer : offers) {
 			List<TaskInfo> tasks = new ArrayList<TaskInfo>();
-			if (launchedTasks < totalTasks) {
+			if (launchedTasks < totalTasks && !crawlQueue.isEmpty()) {
 				TaskID taskId = TaskID.newBuilder()
                 .setValue(Integer.toString(launchedTasks++)).build();
                 
 				System.out.println("Launching task " + taskId.getValue());
-                
 				TaskInfo task = TaskInfo.newBuilder()
                 .setName("task " + taskId.getValue())
                 .setTaskId(taskId)
@@ -54,10 +60,13 @@ public class RendlerScheduler implements Scheduler {
                               .setName("mem")
                               .setType(Value.Type.SCALAR)
                               .setScalar(Value.Scalar.newBuilder().setValue(128)))
-                .setData(ByteString.copyFromUtf8("http://mesosphere.io/"))
+                .setData(ByteString.copyFromUtf8(crawlQueue.get(0)))
                 .setExecutor(ExecutorInfo.newBuilder(executor))
                 .build();
 				tasks.add(task);
+                completedCrawlQueue.add(crawlQueue.get(0));
+                crawlQueue.remove(0);
+  
 			}
 			Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
 			driver.launchTasks(offer.getId(), tasks, filters);
@@ -71,10 +80,10 @@ public class RendlerScheduler implements Scheduler {
 	public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
 		System.out.println("Status update: task " + status.getTaskId().getValue() +
                            " is in state " + status.getState());
-		if (status.getState() == TaskState.TASK_FINISHED) {
+		if (status.getState() == TaskState.TASK_FINISHED || status.getState() == TaskState.TASK_LOST) {
 			finishedTasks++;
 			System.out.println("Finished tasks: " + finishedTasks);
-			if (finishedTasks == totalTasks) {
+			if (finishedTasks == totalTasks || crawlQueue.isEmpty()) {
 				driver.stop();
 			}
 		}
@@ -85,7 +94,20 @@ public class RendlerScheduler implements Scheduler {
                                  ExecutorID executorId,
                                  SlaveID slaveId,
                                  byte[] data) {
-        System.out.println(new String(data));
+        String childUrlStr = new String(data);
+        //add all links found to the queue
+        if (childUrlStr.length() >= 2) {
+            childUrlStr = childUrlStr.substring(1, childUrlStr.length() -1);
+            String [] listURLs = childUrlStr.split(",");
+            for (int i = 0; i <listURLs.length; i++) {
+                String listURL = listURLs[i];
+                listURL = listURL.replaceAll("\\s+","");
+                if (!completedCrawlQueue.contains(listURL) && !crawlQueue.contains(listURL)) {
+                        crawlQueue.add(listURL);
+                }
+                
+            }
+        }
     }
     
 	@Override

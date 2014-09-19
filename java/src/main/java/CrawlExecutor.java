@@ -29,7 +29,6 @@ public class CrawlExecutor implements Executor {
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_RUNNING).build();
         pDriver.sendStatusUpdate(status);
-        
         String url = pTaskInfo.getData().toStringUtf8();
         byte [] message = new byte[0];
        	
@@ -88,7 +87,8 @@ public class CrawlExecutor implements Executor {
             int startQuoteIndex = fullLink.indexOf("\"");
             int endQuoteIndex = fullLink.indexOf("\"", startQuoteIndex + 1);
             String link = fullLink.substring(startQuoteIndex + 1, endQuoteIndex);
-            if (link.contains("http")) {
+            //heuristic used to check for valid urls
+            if (link.contains("http") && !link.endsWith("signup")) {
                 links.add(link);
             }
         }
