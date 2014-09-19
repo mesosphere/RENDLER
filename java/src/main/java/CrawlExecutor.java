@@ -7,6 +7,7 @@ import java.net.*;
 
 public class CrawlExecutor implements Executor {
     
+    
     @Override
     public void registered(ExecutorDriver driver,
                            ExecutorInfo executorInfo,
@@ -23,39 +24,27 @@ public class CrawlExecutor implements Executor {
 
     @Override
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
-        System.out.println("In CrawlExecutor - Launch task!");
         //start task with status running
         TaskStatus status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_RUNNING).build();
         pDriver.sendStatusUpdate(status);
         
-        String url = pTaskInfo.getData().toString();
+        String url = pTaskInfo.getData().toStringUtf8();
+        byte [] message = new byte[0];
        	
-		try
-		{
+		try {
             //Parse the links from the url
             String urlData = getUrlSource(url);
-            Pattern linkPattern = Pattern.compile("(<a[^>]+>.+?</a>)",  Pattern.CASE_INSENSITIVE|Pattern.DOTALL);
-            Matcher pageMatcher = linkPattern.matcher(urlData);
-            ArrayList<String> links = new ArrayList<String>();
-            while(pageMatcher.find()){
-                links.add(pageMatcher.group());
-            }
+            List<String> links = getLinks(urlData);
             // Write list of links to byte array
-			ByteArrayOutputStream baos = new ByteArrayOutputStream();
-			DataOutputStream dataoutputstream = new DataOutputStream(baos);
-			for (String link : links) {
-				dataoutputstream.writeUTF(link);
-			}
-			byte[] byteArrayLinks = baos.toByteArray();
-			pDriver.sendFrameworkMessage(byteArrayLinks);
-		}
-		catch (IOException e) {
-			System.out.println("Exception writing links to byte array: "+ e);
-		}
-        
-        //send framework message and set task to finished
+            message = links.toString().getBytes();
+        }
+        catch (IOException e) {
+            System.out.println("Link may not be valid.  Error parsing the html: " + e);
+        }
+        //send framework message and
+        pDriver.sendFrameworkMessage(message);
         status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_FINISHED).build();
@@ -64,7 +53,7 @@ public class CrawlExecutor implements Executor {
 	}
     
     /**
-     *  Exact the html source code from a webpage.
+     *  Extract the html source code from a webpage.
      *  @param pURL the page url
      *  @return the source code
      *
@@ -82,6 +71,29 @@ public class CrawlExecutor implements Executor {
         
 		return mySB.toString();
 	}
+    
+    
+    /**
+     *  Extract the links from a webpage.
+     *  @param pHtml the html source
+     *  @return the list of links
+     *
+     **/
+    private List<String> getLinks(String pHtml) {
+        Pattern linkPattern = Pattern.compile("<a[^>]+href=[\"']?([\"'>]+)[\"']?[^>]*>(.+?)</a>",  Pattern.CASE_INSENSITIVE|Pattern.DOTALL);
+        Matcher pageMatcher = linkPattern.matcher(pHtml);
+        ArrayList<String> links = new ArrayList<String>();
+        while(pageMatcher.find()){
+            String fullLink = pageMatcher.group();
+            int startQuoteIndex = fullLink.indexOf("\"");
+            int endQuoteIndex = fullLink.indexOf("\"", startQuoteIndex + 1);
+            String link = fullLink.substring(startQuoteIndex + 1, endQuoteIndex);
+            if (link.contains("http")) {
+                links.add(link);
+            }
+        }
+        return links;
+    }
     
     @Override
     public void killTask(ExecutorDriver driver, TaskID taskId) {}

@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.regex.*;
 import java.io.*;
 import java.net.*;
+import com.google.protobuf.ByteString;
 
 public class RendlerScheduler implements Scheduler {
 	public RendlerScheduler(ExecutorInfo executor) {
@@ -53,6 +54,7 @@ public class RendlerScheduler implements Scheduler {
                               .setName("mem")
                               .setType(Value.Type.SCALAR)
                               .setScalar(Value.Scalar.newBuilder().setValue(128)))
+                .setData(ByteString.copyFromUtf8("http://mesosphere.io/"))
                 .setExecutor(ExecutorInfo.newBuilder(executor))
                 .build();
 				tasks.add(task);
@@ -82,7 +84,9 @@ public class RendlerScheduler implements Scheduler {
 	public void frameworkMessage(SchedulerDriver driver,
                                  ExecutorID executorId,
                                  SlaveID slaveId,
-                                 byte[] data) {}
+                                 byte[] data) {
+        System.out.println(new String(data));
+    }
     
 	@Override
 	public void slaveLost(SchedulerDriver driver, SlaveID slaveId) {}

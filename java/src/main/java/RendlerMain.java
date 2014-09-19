@@ -15,6 +15,8 @@ public class RendlerMain {
         }
         
         String command = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
+        //TODO remove hard coding
+        //Also include in the read me that the user needs to set the library path.
         String path = "/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER/java/target/rendler-1.0-SNAPSHOT-jar-with-dependencies.jar";
         
         
@@ -32,7 +34,7 @@ public class RendlerMain {
         
         FrameworkInfo.Builder frameworkBuilder = FrameworkInfo.newBuilder()
         .setUser("") // Have Mesos fill in the current user.
-        .setName("Test Framework (Java)");
+        .setName("Rendler Framework (Java)");
         
         // TODO(vinod): Make checkpointing the default when it is default
         // on the slave.
