@@ -36,6 +36,7 @@ public class CrawlExecutor implements Executor {
             //Parse the links from the url
             String urlData = getUrlSource(url);
             List<String> links = getLinks(urlData);
+            links.add(0, url);
             // Write list of links to byte array
             message = links.toString().getBytes();
         }
