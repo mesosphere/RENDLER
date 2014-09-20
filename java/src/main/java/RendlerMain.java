@@ -88,6 +88,6 @@ public class RendlerMain {
         String name = RendlerScheduler.class.getName();
         System.err.println("Usage: " + name + " master <tasks>");
     }
-
+    
 }
 

@@ -43,7 +43,7 @@ public class RenderExecutor implements Executor {
         } catch (IOException e) {
             System.out.println("Exception executing phantomjs: " + e);
         }
-       
+        
         //send framework message and set task to finished
         String myStatus = pTaskInfo.getTaskId() + url + filename;
 		pDriver.sendFrameworkMessage(myStatus.getBytes());

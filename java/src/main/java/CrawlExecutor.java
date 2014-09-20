@@ -21,7 +21,7 @@ public class CrawlExecutor implements Executor {
     
     @Override
     public void disconnected(ExecutorDriver driver) {}
-
+    
     @Override
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
         //start task with status running

@@ -48,7 +48,6 @@ public class RendlerScheduler implements Scheduler {
 			if (launchedTasks < totalTasks && !crawlQueue.isEmpty()) {
 				TaskID taskId = TaskID.newBuilder()
                 .setValue(Integer.toString(launchedTasks++)).build();
-				System.out.println();
                 
 				System.out.println("Launching task " + taskId.getValue() + " with input: " + crawlQueue.get(0));
 				TaskInfo task = TaskInfo.newBuilder()
