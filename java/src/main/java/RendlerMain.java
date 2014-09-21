@@ -1,4 +1,3 @@
-
 import org.apache.mesos.*;
 import org.apache.mesos.Protos.*;
 import java.util.*;
@@ -14,7 +13,7 @@ public class RendlerMain {
             System.exit(1);
         }
         
-        String command = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
+        
         //TODO remove hard coding
         //Also include in the read me that the user needs to set the library path.
         String path = "/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER/java/target/rendler-1.0-SNAPSHOT-jar-with-dependencies.jar";
@@ -22,17 +21,29 @@ public class RendlerMain {
         
         CommandInfo.URI uri = CommandInfo.URI.newBuilder().setValue(path).setExtract(false).build();
         
-        CommandInfo commandInfo = CommandInfo.newBuilder().setValue(command).addUris(uri).build();
+        String commandCrawler = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
+        CommandInfo commandInfoCrawler = CommandInfo.newBuilder().setValue(commandCrawler).addUris(uri).build();
+        
+        String commandRender = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar RenderExecutor";
+        CommandInfo commandInfoRender = CommandInfo.newBuilder().setValue(commandRender).addUris(uri).build();
         
         
-        ExecutorInfo executor = ExecutorInfo.newBuilder()
+        ExecutorInfo executorCrawl = ExecutorInfo.newBuilder()
         .setExecutorId(ExecutorID.newBuilder().setValue("CrawlExecutor"))
-        .setCommand(commandInfo)
+        .setCommand(commandInfoCrawler)
         .setName("Crawl Executor (Java)")
         .setSource("java")
         .build();
         
+        ExecutorInfo executorRender = ExecutorInfo.newBuilder()
+        .setExecutorId(ExecutorID.newBuilder().setValue("RenderExecutor"))
+        .setCommand(commandInfoRender)
+        .setName("Render Executor (Java)")
+        .setSource("java")
+        .build();
+        
         FrameworkInfo.Builder frameworkBuilder = FrameworkInfo.newBuilder()
+        .setFailoverTimeout(120000)
         .setUser("") // Have Mesos fill in the current user.
         .setName("Rendler Framework (Java)");
         
@@ -45,8 +56,8 @@ public class RendlerMain {
         
         
         Scheduler scheduler = args.length == 1
-        ? new RendlerScheduler(executor)
-        : new RendlerScheduler(executor, Integer.parseInt(args[1]));
+        ? new RendlerScheduler(executorCrawl, executorRender)
+        : new RendlerScheduler(executorCrawl, executorRender, Integer.parseInt(args[1]));
         
         MesosSchedulerDriver driver = null;
         if (System.getenv("MESOS_AUTHENTICATE") != null) {

@@ -9,16 +9,21 @@ import com.google.protobuf.ByteString;
 
 public class RendlerScheduler implements Scheduler {
     
+    private final ExecutorInfo executorCrawler, executorRender;
+	private final int totalTasks;
+	private int launchedTasks = 0;
+	private int finishedTasks = 0;
 	private List<String> crawlQueue;
 	private List<String> completedCrawlQueue;
 	private Map<String,List<String>> edgeList;
     
-	public RendlerScheduler(ExecutorInfo executor) {
-		this(executor, 5);
+	public RendlerScheduler(ExecutorInfo executorCrawler, ExecutorInfo executorRender) {
+		this(executorCrawler, executorRender, 5);
 	}
     
-	public RendlerScheduler(ExecutorInfo executor, int totalTasks) {
-		this.executor = executor;
+	public RendlerScheduler(ExecutorInfo executorCrawler, ExecutorInfo executorRender, int totalTasks) {
+		this.executorCrawler = executorCrawler;
+        this.executorRender = executorRender;
 		this.totalTasks = totalTasks;
 		this.crawlQueue = Collections.synchronizedList(new ArrayList<String>());
 		this.completedCrawlQueue = Collections.synchronizedList(new ArrayList<String>());
@@ -50,6 +55,7 @@ public class RendlerScheduler implements Scheduler {
                 .setValue(Integer.toString(launchedTasks++)).build();
                 
 				System.out.println("Launching task " + taskId.getValue() + " with input: " + crawlQueue.get(0));
+                //Task for crawler
 				TaskInfo task = TaskInfo.newBuilder()
                 .setName("task " + taskId.getValue())
                 .setTaskId(taskId)
@@ -63,15 +69,38 @@ public class RendlerScheduler implements Scheduler {
                               .setType(Value.Type.SCALAR)
                               .setScalar(Value.Scalar.newBuilder().setValue(128)))
                 .setData(ByteString.copyFromUtf8(crawlQueue.get(0)))
-                .setExecutor(ExecutorInfo.newBuilder(executor))
+                .setExecutor(ExecutorInfo.newBuilder(executorCrawler))
                 .build();
+                
+                taskId = TaskID.newBuilder()
+                .setValue(Integer.toString(launchedTasks++)).build();
+                
+                System.out.println("Launching task " + taskId.getValue() + " with input: " + crawlQueue.get(0));
+                
+                //Task for render
+                TaskInfo taskRender = TaskInfo.newBuilder()
+                .setName("task " + taskId.getValue())
+                .setTaskId(taskId)
+                .setSlaveId(offer.getSlaveId())
+                .addResources(Resource.newBuilder()
+                              .setName("cpus")
+                              .setType(Value.Type.SCALAR)
+                              .setScalar(Value.Scalar.newBuilder().setValue(1)))
+                .addResources(Resource.newBuilder()
+                              .setName("mem")
+                              .setType(Value.Type.SCALAR)
+                              .setScalar(Value.Scalar.newBuilder().setValue(128)))
+                .setData(ByteString.copyFromUtf8(crawlQueue.get(0)))
+                .setExecutor(ExecutorInfo.newBuilder(executorRender))
+                .build();
+                
 				tasks.add(task);
-				completedCrawlQueue.add(crawlQueue.get(0));
+                tasks.add(taskRender);
+                completedCrawlQueue.add(crawlQueue.get(0));
 				crawlQueue.remove(0);
                 
 			}
-			Filters filters = Filters.newBuilder().setRefuseSeconds(1).build();
-			driver.launchTasks(offer.getId(), tasks, filters);
+			driver.launchTasks(offer.getId(), tasks);
 		}
 	}
     
@@ -97,22 +126,25 @@ public class RendlerScheduler implements Scheduler {
                                  SlaveID slaveId,
                                  byte[] data) {
 		String childUrlStr = new String(data);
-		//add all links found to the queue
-		if (childUrlStr.length() >= 2) {
-			childUrlStr = childUrlStr.substring(1, childUrlStr.length() -1);
-			String[] arrListUrls = childUrlStr.split(",");
-			LinkedList<String> listUrls = new LinkedList<String>(Arrays.asList(arrListUrls));
-			for (int i = 0; i <listUrls.size(); i++) {
-				String listUrl = listUrls.get(i);
-				listUrl = listUrl.replaceAll("\\s+","");
-				if (!completedCrawlQueue.contains(listUrl) && !crawlQueue.contains(listUrl)) {
-					crawlQueue.add(listUrl);
-				}
-			}
-			//Create the edges from the source to all child links
-			String sourceUrl = listUrls.get(0);
-			edgeList.put(sourceUrl, listUrls);
-		}
+        if (childUrlStr.startsWith("crawl")) {
+            childUrlStr = childUrlStr.substring(5);
+            //add all links found to the queue
+            if (childUrlStr.length() >= 2) {
+                childUrlStr = childUrlStr.substring(1, childUrlStr.length() -1);
+                String[] arrListUrls = childUrlStr.split(",");
+                LinkedList<String> listUrls = new LinkedList<String>(Arrays.asList(arrListUrls));
+                for (int i = 0; i <listUrls.size(); i++) {
+                    String listUrl = listUrls.get(i);
+                    listUrl = listUrl.replaceAll("\\s+","");
+                    if (!completedCrawlQueue.contains(listUrl) && !crawlQueue.contains(listUrl)) {
+                        crawlQueue.add(listUrl);
+                    }
+                }
+                //Create the edges from the source to all child links
+                String sourceUrl = listUrls.get(0);
+                edgeList.put(sourceUrl, listUrls);
+            }
+        }
 	}
     
 	@Override
@@ -128,10 +160,7 @@ public class RendlerScheduler implements Scheduler {
 		System.out.println("Error: " + message);
 	}
     
-	private final ExecutorInfo executor;
-	private final int totalTasks;
-	private int launchedTasks = 0;
-	private int finishedTasks = 0;
+    
     
 }
 

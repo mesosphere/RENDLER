@@ -38,7 +38,8 @@ public class CrawlExecutor implements Executor {
             List<String> links = getLinks(urlData);
             links.add(0, url);
             // Write list of links to byte array
-            message = links.toString().getBytes();
+            String linkStr = "crawl" + links.toString();
+            message = linkStr.getBytes();
         }
         catch (IOException e) {
             System.out.println("Link may not be valid.  Error parsing the html: " + e);

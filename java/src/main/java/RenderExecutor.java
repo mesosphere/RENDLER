@@ -30,29 +30,52 @@ public class RenderExecutor implements Executor {
         .setState(TaskState.TASK_RUNNING).build();
         pDriver.sendStatusUpdate(status);
         
-		String url = pTaskInfo.getData().toString();
-        String currPath = System.getProperty("user.dir");
+		String url = pTaskInfo.getData().toStringUtf8();
+        //TODO remove hard coding
+        String currPath = "/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER/java";
         String renderJSPath =  currPath + "/render.js";
-        String workPathDir = currPath + "/rendler-work-dir/";
-        
+        String workPathDir = currPath + "/rendleroutput/";
         //run phantom js
-        String filename = workPathDir + pTaskInfo.getTaskId().toString() + ".png";
-        String cmd = "phantomjs  "+ renderJSPath + " " + url + " " + filename;
+        String filename = workPathDir + pTaskInfo.getTaskId().getValue() + ".png";
+        String cmd = "phantomjs " + renderJSPath + " " + url + " " + filename;
+        
         try {
-            Runtime.getRuntime().exec(cmd);
-        } catch (IOException e) {
+            runProcess(cmd);
+            //if successful send the framework message
+            if (new File(filename).exists()) {
+                String myStatus = url + "," + filename;
+                pDriver.sendFrameworkMessage(myStatus.getBytes());
+            }
+            
+        } catch (Exception e) {
             System.out.println("Exception executing phantomjs: " + e);
         }
         
-        //send framework message and set task to finished
-        String myStatus = pTaskInfo.getTaskId() + url + filename;
-		pDriver.sendFrameworkMessage(myStatus.getBytes());
+        
+        //set the task to finished
         status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_FINISHED).build();
 		pDriver.sendStatusUpdate(status);
         
 	}
+    
+    private void printLines(String name, InputStream ins) throws Exception {
+        String line = null;
+        BufferedReader in = new BufferedReader(
+                                               new InputStreamReader(ins));
+        while ((line = in.readLine()) != null) {
+            System.out.println(name + " " + line);
+        }
+    }
+    
+    private void runProcess(String command) throws Exception {
+        Process pro = Runtime.getRuntime().exec(command);
+        printLines(command + " stdout:", pro.getInputStream());
+        printLines(command + " stderr:", pro.getErrorStream());
+        pro.waitFor();
+        System.out.println(command + " exitValue() " + pro.exitValue());
+    }
     
     @Override
     public void killTask(ExecutorDriver driver, TaskID taskId) {}
