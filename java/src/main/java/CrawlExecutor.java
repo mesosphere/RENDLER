@@ -24,8 +24,7 @@ public class CrawlExecutor implements Executor {
 	@Override
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
 		// Start task with status running
-		TaskStatus status = TaskStatus.newBuilder()
-				.setTaskId(pTaskInfo.getTaskId())
+		TaskStatus status = TaskStatus.newBuilder().setTaskId(pTaskInfo.getTaskId())
 				.setState(TaskState.TASK_RUNNING).build();
 		pDriver.sendStatusUpdate(status);
 		String url = pTaskInfo.getData().toStringUtf8();
@@ -40,9 +39,7 @@ public class CrawlExecutor implements Executor {
 			String linkStr = "crawl" + links.toString();
 			message = linkStr.getBytes();
 		} catch (IOException e) {
-			System.out
-					.println("Link may not be valid.  Error parsing the html: "
-							+ e);
+			System.out.println("Link may not be valid.  Error parsing the html: " + e);
 		}
 		// Send framework message and mark the task as finished
 		pDriver.sendFrameworkMessage(message);
@@ -56,7 +53,7 @@ public class CrawlExecutor implements Executor {
 	 * Extract the html source code from a webpage.
 	 * 
 	 * @param pURL
-	 *            the page url
+	 *          the page url
 	 * @return the source code
 	 * 
 	 **/
@@ -78,13 +75,12 @@ public class CrawlExecutor implements Executor {
 	 * Extract the links from a webpage.
 	 * 
 	 * @param pHtml
-	 *            the html source
+	 *          the html source
 	 * @return the list of links
 	 * 
 	 **/
 	private List<String> getLinks(String pHtml) {
-		Pattern linkPattern = Pattern.compile(
-				"<a[^>]+href=[\"']?([\"'>]+)[\"']?[^>]*>(.+?)</a>",
+		Pattern linkPattern = Pattern.compile("<a[^>]+href=[\"']?([\"'>]+)[\"']?[^>]*>(.+?)</a>",
 				Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 		Matcher pageMatcher = linkPattern.matcher(pHtml);
 		ArrayList<String> links = new ArrayList<String>();
@@ -92,8 +88,7 @@ public class CrawlExecutor implements Executor {
 			String fullLink = pageMatcher.group();
 			int startQuoteIndex = fullLink.indexOf("\"");
 			int endQuoteIndex = fullLink.indexOf("\"", startQuoteIndex + 1);
-			String link = fullLink
-					.substring(startQuoteIndex + 1, endQuoteIndex);
+			String link = fullLink.substring(startQuoteIndex + 1, endQuoteIndex);
 			// Heuristic used to check for valid urls
 			if (link.contains("http") && !link.endsWith("signup")) {
 				links.add(link);
@@ -119,8 +114,7 @@ public class CrawlExecutor implements Executor {
 	}
 
 	public static void main(String[] args) throws Exception {
-		MesosExecutorDriver driver = new MesosExecutorDriver(
-				new CrawlExecutor());
+		MesosExecutorDriver driver = new MesosExecutorDriver(new CrawlExecutor());
 		System.exit(driver.run() == Status.DRIVER_STOPPED ? 0 : 1);
 	}
 

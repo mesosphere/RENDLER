@@ -28,8 +28,7 @@ public class RenderExecutor implements Executor {
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
 
 		// Start task with status running
-		TaskStatus status = TaskStatus.newBuilder()
-				.setTaskId(pTaskInfo.getTaskId())
+		TaskStatus status = TaskStatus.newBuilder().setTaskId(pTaskInfo.getTaskId())
 				.setState(TaskState.TASK_RUNNING).build();
 		pDriver.sendStatusUpdate(status);
 
@@ -37,8 +36,7 @@ public class RenderExecutor implements Executor {
 		String renderJSPath = currPath + "/render.js";
 		String workPathDir = currPath + "/rendleroutput/";
 		// Run phantom js
-		String filename = workPathDir + pTaskInfo.getTaskId().getValue()
-				+ ".png";
+		String filename = workPathDir + pTaskInfo.getTaskId().getValue() + ".png";
 		String cmd = "phantomjs " + renderJSPath + " " + url + " " + filename;
 
 		try {
@@ -64,9 +62,9 @@ public class RenderExecutor implements Executor {
 	 * Print lines for any input stream, i.e. stdout or stderr.
 	 * 
 	 * @param name
-	 *            the label for the input stream
+	 *          the label for the input stream
 	 * @param ins
-	 *            the input stream containing the data
+	 *          the input stream containing the data
 	 */
 	private void printLines(String name, InputStream ins) throws Exception {
 		String line = null;
@@ -80,7 +78,7 @@ public class RenderExecutor implements Executor {
 	 * Execute a command with error logging.
 	 * 
 	 * @param the
-	 *            string containing the command that needs to be executed
+	 *          string containing the command that needs to be executed
 	 */
 	private void runProcess(String command) throws Exception {
 		Process pro = Runtime.getRuntime().exec(command);
@@ -107,8 +105,7 @@ public class RenderExecutor implements Executor {
 	}
 
 	public static void main(String[] args) throws Exception {
-		MesosExecutorDriver driver = new MesosExecutorDriver(
-				new RenderExecutor());
+		MesosExecutorDriver driver = new MesosExecutorDriver(new RenderExecutor());
 		System.exit(driver.run() == Status.DRIVER_STOPPED ? 0 : 1);
 	}
 
