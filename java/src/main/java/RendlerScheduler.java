@@ -108,9 +108,10 @@ public class RendlerScheduler implements Scheduler {
 
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
-    System.out.println("Status update: task " + status.getTaskId().getValue() + " is in state "
-        + status.getState());
+
     if (status.getState() == TaskState.TASK_FINISHED || status.getState() == TaskState.TASK_LOST) {
+      System.out.println("Status update: task " + status.getTaskId().getValue()
+          + " has completed with state " + status.getState());
       finishedTasks++;
       System.out.println("Finished tasks: " + finishedTasks);
       if (finishedTasks == totalTasks) {
@@ -121,9 +122,11 @@ public class RendlerScheduler implements Scheduler {
         graphWriter.writeDotFile(parentDir + "/result.dot", urlToFileNameMap, edgeList);
         driver.stop();
       }
+    } else {
+      System.out.println("Status update: task " + status.getTaskId().getValue() + " is in state "
+          + status.getState());
     }
   }
-
   @Override
   public void frameworkMessage(SchedulerDriver driver, ExecutorID executorId, SlaveID slaveId,
       byte[] data) {
