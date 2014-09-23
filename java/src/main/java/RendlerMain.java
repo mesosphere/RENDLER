@@ -13,91 +13,90 @@ public class RendlerMain {
 			System.exit(1);
 		}
 
-		String path = System.getProperty("user.dir") +
-				"/target/rendler-1.0-SNAPSHOT-jar-with-dependencies.jar";
+		String path = System.getProperty("user.dir")
+				+ "/target/rendler-1.0-SNAPSHOT-jar-with-dependencies.jar";
 
+		CommandInfo.URI uri = CommandInfo.URI.newBuilder().setValue(path)
+				.setExtract(false).build();
 
-		CommandInfo.URI uri = CommandInfo.URI.newBuilder().setValue(path).setExtract(false).
-				build();
-
-		String commandCrawler =
-				"java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
+		String commandCrawler = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
 		CommandInfo commandInfoCrawler = CommandInfo.newBuilder()
 				.setValue(commandCrawler).addUris(uri).build();
 
-		String commandRender =
-				"java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar RenderExecutor";
+		String commandRender = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar RenderExecutor";
 		CommandInfo commandInfoRender = CommandInfo.newBuilder()
 				.setValue(commandRender).addUris(uri).build();
 
-
-		ExecutorInfo executorCrawl = ExecutorInfo.newBuilder()
-				.setExecutorId(ExecutorID.newBuilder().setValue("CrawlExecutor"))
+		ExecutorInfo executorCrawl = ExecutorInfo
+				.newBuilder()
+				.setExecutorId(
+						ExecutorID.newBuilder().setValue("CrawlExecutor"))
 				.setCommand(commandInfoCrawler)
-				.setName("Crawl Executor (Java)")
-				.setSource("java")
-				.build();
+				.setName("Crawl Executor (Java)").setSource("java").build();
 
-		ExecutorInfo executorRender = ExecutorInfo.newBuilder()
-				.setExecutorId(ExecutorID.newBuilder().setValue("RenderExecutor"))
+		ExecutorInfo executorRender = ExecutorInfo
+				.newBuilder()
+				.setExecutorId(
+						ExecutorID.newBuilder().setValue("RenderExecutor"))
 				.setCommand(commandInfoRender)
-				.setData(ByteString.copyFromUtf8(System.getProperty("user.dir")))
-				.setName("Render Executor (Java)")
-				.setSource("java")
-				.build();
+				.setData(
+						ByteString.copyFromUtf8(System.getProperty("user.dir")))
+				.setName("Render Executor (Java)").setSource("java").build();
 
 		FrameworkInfo.Builder frameworkBuilder = FrameworkInfo.newBuilder()
-				.setFailoverTimeout(120000)
-				.setUser("") // Have Mesos fill in the current user.
+				.setFailoverTimeout(120000).setUser("") // Have Mesos fill in
+														// the current user.
 				.setName("Rendler Framework (Java)");
-
 
 		if (System.getenv("MESOS_CHECKPOINT") != null) {
 			System.out.println("Enabling checkpoint for the framework");
 			frameworkBuilder.setCheckpoint(true);
 		}
 
+		Scheduler scheduler = args.length == 1 ? new RendlerScheduler(
+				executorCrawl, executorRender) : new RendlerScheduler(
+				executorCrawl, executorRender, Integer.parseInt(args[1]));
 
-		Scheduler scheduler = args.length == 1
-				? new RendlerScheduler(executorCrawl, executorRender)
-		: new RendlerScheduler(executorCrawl, executorRender, Integer.parseInt(args[1]));
+		MesosSchedulerDriver driver = null;
+		if (System.getenv("MESOS_AUTHENTICATE") != null) {
+			System.out.println("Enabling authentication for the framework");
 
-				MesosSchedulerDriver driver = null;
-				if (System.getenv("MESOS_AUTHENTICATE") != null) {
-					System.out.println("Enabling authentication for the framework");
+			if (System.getenv("DEFAULT_PRINCIPAL") == null) {
+				System.err
+						.println("Expecting authentication principal in the environment");
+				System.exit(1);
+			}
 
-					if (System.getenv("DEFAULT_PRINCIPAL") == null) {
-						System.err.println("Expecting authentication principal in the environment");
-						System.exit(1);
-					}
+			if (System.getenv("DEFAULT_SECRET") == null) {
+				System.err
+						.println("Expecting authentication secret in the environment");
+				System.exit(1);
+			}
 
-					if (System.getenv("DEFAULT_SECRET") == null) {
-						System.err.println("Expecting authentication secret in the environment");
-						System.exit(1);
-					}
+			Credential credential = Credential
+					.newBuilder()
+					.setPrincipal(System.getenv("DEFAULT_PRINCIPAL"))
+					.setSecret(
+							ByteString.copyFrom(System.getenv("DEFAULT_SECRET")
+									.getBytes())).build();
 
-					Credential credential = Credential.newBuilder()
-							.setPrincipal(System.getenv("DEFAULT_PRINCIPAL"))
-							.setSecret(ByteString.copyFrom(System.getenv("DEFAULT_SECRET")
-									.getBytes()))
-									.build();
+			frameworkBuilder.setPrincipal(System.getenv("DEFAULT_PRINCIPAL"));
 
-					frameworkBuilder.setPrincipal(System.getenv("DEFAULT_PRINCIPAL"));
+			driver = new MesosSchedulerDriver(scheduler,
+					frameworkBuilder.build(), args[0], credential);
+		} else {
+			frameworkBuilder.setPrincipal("test-framework-java");
 
-					driver = new MesosSchedulerDriver(scheduler, frameworkBuilder.build(), args[0],
-							credential);
-				} else {
-					frameworkBuilder.setPrincipal("test-framework-java");
+			driver = new MesosSchedulerDriver(scheduler,
+					frameworkBuilder.build(), args[0]);
+		}
 
-					driver = new MesosSchedulerDriver(scheduler, frameworkBuilder.build(), args[0]);
-				}
+		int status = driver.run() == Status.DRIVER_STOPPED ? 0 : 1;
 
-				int status = driver.run() == Status.DRIVER_STOPPED ? 0 : 1;
+		// Ensure that the driver process terminates.
+		driver.stop();
 
-				// Ensure that the driver process terminates.
-				driver.stop();
-
-				System.exit(status);
+		System.exit(status);
 	}
 
 	private static void usage() {
@@ -106,4 +105,3 @@ public class RendlerMain {
 	}
 
 }
-
