@@ -13,19 +13,21 @@ public class RendlerMain {
             System.exit(1);
         }
         
-        
-        //TODO remove hard coding
-        //Also include in the read me that the user needs to set the library path.
-        String path = "/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER/java/target/rendler-1.0-SNAPSHOT-jar-with-dependencies.jar";
+        String path = System.getProperty("user.dir") +
+        "/target/rendler-1.0-SNAPSHOT-jar-with-dependencies.jar";
         
         
         CommandInfo.URI uri = CommandInfo.URI.newBuilder().setValue(path).setExtract(false).build();
         
-        String commandCrawler = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
-        CommandInfo commandInfoCrawler = CommandInfo.newBuilder().setValue(commandCrawler).addUris(uri).build();
+        String commandCrawler =
+        "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar CrawlExecutor";
+        CommandInfo commandInfoCrawler = CommandInfo.newBuilder()
+        .setValue(commandCrawler).addUris(uri).build();
         
-        String commandRender = "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar RenderExecutor";
-        CommandInfo commandInfoRender = CommandInfo.newBuilder().setValue(commandRender).addUris(uri).build();
+        String commandRender =
+        "java -cp rendler-1.0-SNAPSHOT-jar-with-dependencies.jar RenderExecutor";
+        CommandInfo commandInfoRender = CommandInfo.newBuilder()
+        .setValue(commandRender).addUris(uri).build();
         
         
         ExecutorInfo executorCrawl = ExecutorInfo.newBuilder()
@@ -38,6 +40,7 @@ public class RendlerMain {
         ExecutorInfo executorRender = ExecutorInfo.newBuilder()
         .setExecutorId(ExecutorID.newBuilder().setValue("RenderExecutor"))
         .setCommand(commandInfoRender)
+        .setData(ByteString.copyFromUtf8(System.getProperty("user.dir")))
         .setName("Render Executor (Java)")
         .setSource("java")
         .build();
@@ -47,8 +50,7 @@ public class RendlerMain {
         .setUser("") // Have Mesos fill in the current user.
         .setName("Rendler Framework (Java)");
         
-        // TODO(vinod): Make checkpointing the default when it is default
-        // on the slave.
+        
         if (System.getenv("MESOS_CHECKPOINT") != null) {
             System.out.println("Enabling checkpoint for the framework");
             frameworkBuilder.setCheckpoint(true);
@@ -80,7 +82,8 @@ public class RendlerMain {
             
             frameworkBuilder.setPrincipal(System.getenv("DEFAULT_PRINCIPAL"));
             
-            driver = new MesosSchedulerDriver(scheduler, frameworkBuilder.build(), args[0], credential);
+            driver = new MesosSchedulerDriver(scheduler, frameworkBuilder.build(), args[0],
+                                              credential);
         } else {
             frameworkBuilder.setPrincipal("test-framework-java");
             

@@ -24,7 +24,7 @@ public class CrawlExecutor implements Executor {
     
     @Override
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
-        //start task with status running
+        //Start task with status running
         TaskStatus status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_RUNNING).build();
@@ -44,7 +44,7 @@ public class CrawlExecutor implements Executor {
         catch (IOException e) {
             System.out.println("Link may not be valid.  Error parsing the html: " + e);
         }
-        //send framework message and
+        //Send framework message and mark the task as finished
         pDriver.sendFrameworkMessage(message);
         status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
@@ -62,8 +62,8 @@ public class CrawlExecutor implements Executor {
 	private String getUrlSource(String pURL) throws IOException {
 		URL siteURL = new URL(pURL);
 		URLConnection connection = siteURL.openConnection();
-		BufferedReader myBufReader = new BufferedReader(new InputStreamReader(
-                                                                              connection.getInputStream(), "UTF-8"));
+		BufferedReader myBufReader =
+        new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
 		String inputLine;
 		StringBuilder mySB = new StringBuilder();
 		while ((inputLine = myBufReader.readLine()) != null)
@@ -81,7 +81,8 @@ public class CrawlExecutor implements Executor {
      *
      **/
     private List<String> getLinks(String pHtml) {
-        Pattern linkPattern = Pattern.compile("<a[^>]+href=[\"']?([\"'>]+)[\"']?[^>]*>(.+?)</a>",  Pattern.CASE_INSENSITIVE|Pattern.DOTALL);
+        Pattern linkPattern = Pattern.compile("<a[^>]+href=[\"']?([\"'>]+)[\"']?[^>]*>(.+?)</a>",
+                                              Pattern.CASE_INSENSITIVE|Pattern.DOTALL);
         Matcher pageMatcher = linkPattern.matcher(pHtml);
         ArrayList<String> links = new ArrayList<String>();
         while(pageMatcher.find()){
@@ -89,7 +90,7 @@ public class CrawlExecutor implements Executor {
             int startQuoteIndex = fullLink.indexOf("\"");
             int endQuoteIndex = fullLink.indexOf("\"", startQuoteIndex + 1);
             String link = fullLink.substring(startQuoteIndex + 1, endQuoteIndex);
-            //heuristic used to check for valid urls
+            //Heuristic used to check for valid urls
             if (link.contains("http") && !link.endsWith("signup")) {
                 links.add(link);
             }

@@ -8,12 +8,15 @@ import java.net.*;
 
 public class RenderExecutor implements Executor {
     
+    String currPath;
+    
     @Override
     public void registered(ExecutorDriver driver,
                            ExecutorInfo executorInfo,
                            FrameworkInfo frameworkInfo,
                            SlaveInfo slaveInfo) {
         System.out.println("Registered executor on " + slaveInfo.getHostname());
+        currPath = executorInfo.getData().toStringUtf8();
     }
     
     @Override
@@ -24,26 +27,25 @@ public class RenderExecutor implements Executor {
     
     @Override
 	public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
-        //start task with status running
+        
+        //Start task with status running
         TaskStatus status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_RUNNING).build();
         pDriver.sendStatusUpdate(status);
         
 		String url = pTaskInfo.getData().toStringUtf8();
-        //TODO remove hard coding
-        String currPath = "/home/vagrant/sandbox/mesosphere/mesos-sdk/RENDLER/java";
         String renderJSPath =  currPath + "/render.js";
         String workPathDir = currPath + "/rendleroutput/";
-        //run phantom js
+        //Run phantom js
         String filename = workPathDir + pTaskInfo.getTaskId().getValue() + ".png";
         String cmd = "phantomjs " + renderJSPath + " " + url + " " + filename;
         
         try {
             runProcess(cmd);
-            //if successful send the framework message
+            //If successful, send the framework message
             if (new File(filename).exists()) {
-                String myStatus = url + "," + filename;
+                String myStatus = "render" + url + "," + filename;
                 pDriver.sendFrameworkMessage(myStatus.getBytes());
             }
             
@@ -52,7 +54,7 @@ public class RenderExecutor implements Executor {
         }
         
         
-        //set the task to finished
+        //Set the task with status finished
         status = TaskStatus.newBuilder()
         .setTaskId(pTaskInfo.getTaskId())
         .setState(TaskState.TASK_FINISHED).build();
@@ -60,6 +62,11 @@ public class RenderExecutor implements Executor {
         
 	}
     
+    /**
+     * Print lines for any input stream, i.e. stdout or stderr.
+     * @param name the label for the input stream
+     * @param ins the input stream containing the data
+     */
     private void printLines(String name, InputStream ins) throws Exception {
         String line = null;
         BufferedReader in = new BufferedReader(
@@ -69,6 +76,10 @@ public class RenderExecutor implements Executor {
         }
     }
     
+    /**
+     * Execute a command with error logging.
+     * @param the string containing the command that needs to be executed
+     */
     private void runProcess(String command) throws Exception {
         Process pro = Runtime.getRuntime().exec(command);
         printLines(command + " stdout:", pro.getInputStream());
