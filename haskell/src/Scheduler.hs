@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Main where
+module Scheduler where
 
 import           Types
 import qualified Crawler                as Crawl
@@ -24,15 +24,13 @@ import           System.Mesos.Scheduler
 import           System.Mesos.Types
 import           System.Path            (absNormPath)
 
-import           System.IO.Unsafe       (unsafePerformIO)
-
 cpusPerTask = 0.1
 memPerTask = 32.0
 requiredResources = [Resource "cpus" (Scalar cpusPerTask) Nothing, Resource "mem" (Scalar memPerTask) Nothing]
 crawlerId = "crawler"
 rendererId = "renderer"
 
-commandUris = unsafePerformIO $ do
+commandUris = do
   dir <- getCurrentDirectory
   let absoluteUris = fmap (\uri -> absNormPath dir uri) uris
   return $ fmap (\uri -> (CommandURI (C.pack (fromJust uri)) Nothing Nothing)) absoluteUris
@@ -46,14 +44,15 @@ commandUris = unsafePerformIO $ do
       "../python/task_state.py"]
 
 
-crawlExecutorSettings fid = e { executorName = Just "Crawler Executor"}
-  where e = executorInfo (ExecutorID "crawler") fid (CommandInfo commandUris Nothing (ShellCommand "python crawl_executor.py") Nothing) requiredResources
+crawlExecutorSettings fid uris = e { executorName = Just "Crawler Executor"}
+  where e = executorInfo (ExecutorID "crawler") fid (CommandInfo uris Nothing (ShellCommand "python crawl_executor.py") Nothing) requiredResources
 
-renderExecutorSettings fid = e { executorName = Just "Render Executor"}
-  where e = executorInfo (ExecutorID "renderer") fid (CommandInfo commandUris Nothing (ShellCommand "python render_executor.py --local") Nothing) requiredResources
+renderExecutorSettings fid uris = e { executorName = Just "Render Executor"}
+  where e = executorInfo (ExecutorID "renderer") fid (CommandInfo uris Nothing (ShellCommand "python render_executor.py --local") Nothing) requiredResources
 
 data RendlerScheduler = RendlerScheduler
-  {  crawlQueue    :: IORef [URL]
+  {  shutdown      :: IORef Bool
+    ,crawlQueue    :: IORef [URL]
     ,renderQueue   :: IORef [URL]
     ,processedURLs :: IORef (Set URL)
     ,crawlResults  :: IORef [Edge]
@@ -97,21 +96,27 @@ instance ToScheduler RendlerScheduler where
     printStatistics s
     forM_ offers $ \offer -> do
       putStrLn $ "Got resource offer [" <> show offer <> "]"
-      let tasksToStart = quot (maxTasksForOffer offer) 2
-      renderUrls <- atomicRemove tasksToStart (renderQueue s)
-      crawlUrls <- atomicRemove tasksToStart (crawlQueue s)
-      renderTasks <- forM renderUrls $ \url -> do
-        id <- atomicModifyIORef (startedTasks s) (\i -> (i+1, i))
-        return $ makeRenderTask (C.pack (show id)) url offer
-      crawlTasks <- forM crawlUrls $ \url -> do
-        id <- atomicModifyIORef (startedTasks s) (\i -> (i+1, i))
-        return $ makeCrawlTask (C.pack (show id)) url offer
-
-      let tasks = renderTasks <> crawlTasks
-      if (length tasks) == 0 then
+      shuttingDown <- readIORef (shutdown s)
+      if shuttingDown then do
         declineOffer driver (offerID offer) filters
-      else
-        launchTasks driver [offerID offer] tasks (Filters Nothing)
+      else do
+        let tasksToStart = quot (maxTasksForOffer offer) 2
+        renderUrls <- atomicRemove tasksToStart (renderQueue s)
+        crawlUrls <- atomicRemove tasksToStart (crawlQueue s)
+        renderTasks <- forM renderUrls $ makeTaskWithId makeRenderTask offer
+        crawlTasks <- forM crawlUrls $ makeTaskWithId makeCrawlTask offer
+
+        let tasks = renderTasks <> crawlTasks
+        if (length tasks) == 0 then
+          declineOffer driver (offerID offer) filters
+        else
+          launchTasks driver [offerID offer] tasks (Filters Nothing)
+    where
+      makeTaskWithId :: (C.ByteString -> URL -> [CommandURI] -> Offer -> TaskInfo) -> Offer -> URL -> IO TaskInfo
+      makeTaskWithId f offer url = do
+        uris <- commandUris
+        id <- atomicModifyIORef (startedTasks s) (\i -> (i+1, i))
+        return $ f (C.pack (show id)) url uris offer
 
   statusUpdate s driver status = do
     putStrLn $ "Task " <> show (taskStatusTaskID status) <> " is in state " <> show state
@@ -151,26 +156,26 @@ addRenderResult s r = do
     key = Rend.url r
     value = Rend.imageUrl r
 
-makeCrawlTask :: C.ByteString -> URL -> Offer -> TaskInfo
-makeCrawlTask id url offer =
+makeCrawlTask :: C.ByteString -> URL -> [CommandURI] -> Offer -> TaskInfo
+makeCrawlTask id url uris offer =
   TaskInfo
     "Crawler task"
     (TaskID $ "crawler_" <> id)
     (offerSlaveID offer)
     requiredResources
-    (TaskExecutor $ crawlExecutorSettings $ offerFrameworkID offer)
+    (TaskExecutor $ crawlExecutorSettings (offerFrameworkID offer) uris)
     (Just (C.pack (fromURL url)))
     Nothing
     Nothing
 
-makeRenderTask :: C.ByteString -> URL -> Offer -> TaskInfo
-makeRenderTask id url offer =
+makeRenderTask :: C.ByteString -> URL -> [CommandURI] -> Offer -> TaskInfo
+makeRenderTask id url uris offer =
   TaskInfo
     "Render task"
     (TaskID $ "renderer_" <> id)
     (offerSlaveID offer)
     requiredResources
-    (TaskExecutor $ renderExecutorSettings $ offerFrameworkID offer)
+    (TaskExecutor $ renderExecutorSettings (offerFrameworkID offer) uris)
     (Just (C.pack (fromURL url)))
     Nothing
     Nothing
@@ -198,26 +203,5 @@ cpuAndMemResources o =
         ("cpus", (Scalar d)) -> (cpu + d, mem)
         ("mem", (Scalar d)) -> (cpu, mem + d)
         _ -> (cpu, mem)
-    ) (0.0, 0.0) (offerResources o)
+  ) (0.0, 0.0) (offerResources o)
 
-main = do
-  role <- return "*"
-  master <- return "127.0.1.1:5050"
-  let info = (frameworkInfo "" "RENDLER") { frameworkRole = Just role }
-  let seedUrl = URL "http://mesosphere.com"
-  scheduler <- RendlerScheduler <$>
-                newIORef [seedUrl] <*>
-                newIORef [seedUrl] <*>
-                newIORef Set.empty <*>
-                newIORef [] <*>
-                newIORef Map.empty <*>
-                newIORef 0 <*>
-                newIORef 0
-
-  status <- withSchedulerDriver scheduler info master Nothing $ \d -> do
-    run d
-    -- run two minutes
-    stop d False
-  if status /= Stopped
-    then exitFailure
-    else exitSuccess

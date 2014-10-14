@@ -6,7 +6,7 @@ maintainer:         dario@mesosphere.io
 build-type:         Simple
 cabal-version:      >=1.10
 executable rendler-scheduler
-  main-is:            Scheduler.hs
+  main-is:            Rendler.hs
   build-depends:      base >=4.7.0.0
                       ,hs-mesos >=0.20.0.0
                       ,bytestring >=0.10.4.0
@@ -16,6 +16,7 @@ executable rendler-scheduler
                       ,containers >=0.5.5.1
                       ,directory >=1.2.1.0
                       ,MissingH >=1.2.1.0
+                      ,unix >=2.7.0.1
   hs-source-dirs:     src
   default-language:   Haskell2010
 
