@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import           DOT
 import           Scheduler
 import           Types
 
@@ -35,7 +36,11 @@ main = do
   status <- withSchedulerDriver scheduler info (C.pack master) Nothing $ \d -> do
     start d
     installHandler keyboardSignal (Catch (shutdownRendler d scheduler)) Nothing
-    await d
+    status <- await d
+    crawlRes <- readIORef (crawlResults scheduler)
+    renderRes <- readIORef (renderResults scheduler)
+    writeDOTFile crawlRes renderRes "result.dot"
+    return status
   if status /= Stopped
     then do
       exitFailure
