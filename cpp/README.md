@@ -6,7 +6,7 @@ Dependencies:
 - libboost_regex.so
 - libcurl.so
 - libprotobuf.so
-- lib
+- google log
 - Makefile assumes all 3rdparty libraries/headers to be available in the
   default include path (/usr/include?).
 - render.js present in the parent directory.
