@@ -41,14 +41,14 @@ $ vagrant ssh
 vagrant@mesos:~ $ cd hostfiles/cpp
 
 # Update install dependencies
-vagrant@mesos:~ $ sudo apt-get update
-vagrant@mesos:~ $ sudo apt-get install libcurl4-openssl-dev libboost-regex1.55-dev \
+vagrant@mesos:cpp $ sudo apt-get update
+vagrant@mesos:cpp $ sudo apt-get install libcurl4-openssl-dev libboost-regex1.55-dev \
 				  libprotobuf-dev libgoogle-glog-dev protobuf-compiler
 
 # Build
-vagrant@mesos:~ $ make all
+vagrant@mesos:cpp $ make all
 
 # Start the scheduler with the seed url, the mesos master ip
-vagrant@mesos:python $ rendler --seedUrl http://mesosphere.io --master 127.0.1.1:5050
+vagrant@mesos:cpp $ rendler --seedUrl http://mesosphere.io --master 127.0.1.1:5050
 # <Ctrl+C> to stop...
 ```
