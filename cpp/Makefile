@@ -1,19 +1,20 @@
 CXX = g++
-CXXFLAGS = -g -O2
-LDFLAGS += -lmesos
+CXXFLAGS = -g -O2 -pthread
+LDFLAGS += -lmesos -lpthread -lprotobuf
 CXXCOMPILE = $(CXX) $(INCLUDES) $(CXXFLAGS) -c -o $@
-CXXLINK = $(CXX) $(INCLUDES) $(CXXFLAGS) $(LDFLAGS) -o $@
+CXXLINK = $(CXX) $(INCLUDES) $(CXXFLAGS) -o $@
 
 default: all
 all: rendler crawl_executor render_executor
 
 HEADERS = rendler_helper.hpp
 
+
 crawl_executor: crawl_executor.cpp $(HEADERS)
-	$(CXXLINK) $< -lboost_regex -lcurl
+	$(CXXLINK) $<  $(LDFLAGS) -lboost_regex -lcurl
 
 %: %.cpp $(HEADERS)
-	$(CXXLINK) $<
+	$(CXXLINK) $< $(LDFLAGS)
 
 check: crawl
 	./crawl http://mesosphere.io/team/

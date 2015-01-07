@@ -5,6 +5,8 @@ Dependencies:
 ============
 - libboost_regex.so
 - libcurl.so
+- libprotobuf.so
+- google log
 - Makefile assumes all 3rdparty libraries/headers to be available in the
   default include path (/usr/include?).
 - render.js present in the parent directory.
@@ -30,3 +32,23 @@ Communication between Scheduler and Executors:
 - Each framework message consists of a vector of strings:
   RenderExecuter->Scheduler:    { taskId, taskUrl, filepath }
   CrawlExecuter->Scheduler:     { taskId, taskUrl, <urls>+ }
+
+Execution:
+=========
+
+```bash
+$ vagrant ssh
+vagrant@mesos:~ $ cd hostfiles/cpp
+
+# Update install dependencies
+vagrant@mesos:cpp $ sudo apt-get update
+vagrant@mesos:cpp $ sudo apt-get install libcurl4-openssl-dev libboost-regex1.55-dev \
+				  libprotobuf-dev libgoogle-glog-dev protobuf-compiler
+
+# Build
+vagrant@mesos:cpp $ make all
+
+# Start the scheduler with the seed url, the mesos master ip
+vagrant@mesos:cpp $ rendler --seedUrl http://mesosphere.io --master 127.0.1.1:5050
+# <Ctrl+C> to stop...
+```
