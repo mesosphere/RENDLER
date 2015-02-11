@@ -1,7 +1,7 @@
 package rendler
 
 import (
-	"github.com/mesosphere/mesos-go/mesos"
+	mesos "github.com/mesos/mesos-go/mesosproto"
 )
 
 func NameFor(state *mesos.TaskState) string {
