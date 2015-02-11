@@ -7,7 +7,7 @@ VAGRANTFILE_API_VERSION = "2"
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.box = "mesos-demo"
-  # config.vm.box_url = "http://downloads.mesosphere.io/demo/mesos-demo.box"
+  config.vm.box_url = "http://downloads.mesosphere.io/demo/mesos-demo.box"
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
