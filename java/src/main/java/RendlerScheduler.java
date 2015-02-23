@@ -29,7 +29,7 @@ public class RendlerScheduler implements Scheduler {
     this.completedCrawlQueue = Collections.synchronizedList(new ArrayList<String>());
     this.edgeList = Collections.synchronizedMap(new HashMap<String, Set<String>>());
     this.urlToFileNameMap = Collections.synchronizedMap(new HashMap<String, String>());
-    this.crawlQueue.add("http://mesosphere.io/");
+    this.crawlQueue.add("http://mesosphere.com/");
 
   }
 
