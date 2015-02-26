@@ -6,9 +6,12 @@ import mesos._
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ Await, Future }
 import java.io.File
 import java.nio.charset.Charset
+
+import scala.concurrent.duration.Duration
+import scala.util.Try
 
 class Scheduler(val rendlerHome: File, seedURL: String)
     extends mesos.Scheduler
@@ -27,14 +30,23 @@ class Scheduler(val rendlerHome: File, seedURL: String)
   private[this] var tasksRunning = 0
   private[this] var shuttingDown: Boolean = false
 
-  def shutdown[T](callback: => T): Future[T] =
-    Future {
-      shuttingDown = true
-      println("Scheduler shutting down...")
-      while (tasksRunning > 0) Thread.sleep(500)
-      writeDot(crawlResults, renderResults.toMap, new File(rendlerHome, "result.dot"))
-      callback
+  def waitForRunningTasks(): Unit = {
+    while (tasksRunning > 0) {
+      println(s"Shutting down but still have $tasksRunning tasks running.")
+      Thread.sleep(3000)
     }
+  }
+
+  def shutdown[T](maxWait: Duration)(callback: => T): Unit = {
+    println("Scheduler shutting down...")
+    shuttingDown = true
+
+    val f = Future { waitForRunningTasks() }
+    Try { Await.ready(f, maxWait) }
+
+    writeDot(crawlResults, renderResults.toMap, new File(rendlerHome, "result.dot"))
+    callback
+  }
 
   def printQueueStatistics(): Unit = println(s"""
     |Queue Statistics:
