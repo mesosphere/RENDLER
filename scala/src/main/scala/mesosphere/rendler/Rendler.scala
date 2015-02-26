@@ -1,11 +1,12 @@
 package mesosphere.rendler
 
+import java.io.File
+
 import org.apache.mesos._
-import scala.concurrent.duration._
-import scala.concurrent.Await
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import java.io.File
+import scala.concurrent.duration._
 
 object Rendler {
 
@@ -55,19 +56,12 @@ object Rendler {
 
     // wait for the enter key
     val NEWLINE = '\n'.toInt
-    while (System.in.read != NEWLINE) { /* do nothing */ }
+    while (System.in.read != NEWLINE) {
+      Thread.sleep(1000)
+    }
 
     // graceful shutdown
-    val maxWait = 2.minutes
-    try {
-      Await.ready(scheduler.shutdown(driver.stop()), maxWait)
-    }
-    catch {
-      case toe: java.util.concurrent.TimeoutException =>
-        println(s"Shutdown timed out after [${maxWait.toSeconds}] seconds")
-    }
-    finally {
-      sys.exit(0)
-    }
+    scheduler.shutdown(5.minutes) { driver.stop() }
+    sys.exit(0)
   }
 }
