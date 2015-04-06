@@ -1,3 +1,5 @@
+package com.mesosphere.rendler.executors;
+
 import org.apache.mesos.*;
 import org.apache.mesos.Protos.*;
 import java.util.*;
@@ -9,22 +11,18 @@ public class RenderExecutor implements Executor {
 
   String currPath;
 
-  @Override
   public void registered(ExecutorDriver driver, ExecutorInfo executorInfo,
       FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
     System.out.println("Registered executor on " + slaveInfo.getHostname());
     currPath = executorInfo.getData().toStringUtf8();
   }
 
-  @Override
   public void reregistered(ExecutorDriver driver, SlaveInfo executorInfo) {
   }
 
-  @Override
   public void disconnected(ExecutorDriver driver) {
   }
 
-  @Override
   public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
 
     // Start task with status running
@@ -88,19 +86,15 @@ public class RenderExecutor implements Executor {
     System.out.println(command + " exitValue() " + pro.exitValue());
   }
 
-  @Override
   public void killTask(ExecutorDriver driver, TaskID taskId) {
   }
 
-  @Override
   public void frameworkMessage(ExecutorDriver driver, byte[] data) {
   }
 
-  @Override
   public void shutdown(ExecutorDriver driver) {
   }
 
-  @Override
   public void error(ExecutorDriver driver, String message) {
   }
 

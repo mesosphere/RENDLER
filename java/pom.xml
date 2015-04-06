@@ -26,6 +26,9 @@
                         </goals>
                     </execution>
                 </executions>
+                <configuration>
+                   <configFile>Mesosphere-JavaFormatter.xml</configFile>
+               </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
