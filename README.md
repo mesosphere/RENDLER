@@ -24,8 +24,8 @@ RENDLER consists of three main components:
 ### Start the `mesos-demo` VM
 
 ```bash
-$ wget http://downloads.mesosphere.io/demo/mesoscon.box -O /tmp/mesoscon.box
-$ vagrant box add --name mesos-demo /tmp/mesoscon.box
+$ wget http://downloads.mesosphere.io/demo/mesos.box -O /tmp/mesos.box
+$ vagrant box add --name mesos-demo /tmp/mesos.box
 $ git clone https://github.com/mesosphere/RENDLER.git
 $ cd RENDLER
 $ vagrant up
