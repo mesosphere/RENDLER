@@ -9,17 +9,21 @@ import java.net.*;
 
 public class CrawlExecutor implements Executor {
 
+  @Override
   public void registered(ExecutorDriver driver, ExecutorInfo executorInfo,
       FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
     System.out.println("Registered executor on " + slaveInfo.getHostname());
   }
 
+  @Override
   public void reregistered(ExecutorDriver driver, SlaveInfo executorInfo) {
   }
 
+  @Override
   public void disconnected(ExecutorDriver driver) {
   }
 
+  @Override
   public void launchTask(ExecutorDriver pDriver, TaskInfo pTaskInfo) {
     // Start task with status running
     TaskStatus status = TaskStatus.newBuilder().setTaskId(pTaskInfo.getTaskId())
@@ -95,15 +99,19 @@ public class CrawlExecutor implements Executor {
     return links;
   }
 
+  @Override
   public void killTask(ExecutorDriver driver, TaskID taskId) {
   }
 
+  @Override
   public void frameworkMessage(ExecutorDriver driver, byte[] data) {
   }
 
+  @Override
   public void shutdown(ExecutorDriver driver) {
   }
 
+  @Override
   public void error(ExecutorDriver driver, String message) {
   }
 

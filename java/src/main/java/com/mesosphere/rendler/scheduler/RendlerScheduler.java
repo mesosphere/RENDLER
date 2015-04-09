@@ -57,16 +57,20 @@ public class RendlerScheduler implements Scheduler {
 
   }
 
+  @Override
   public void registered(SchedulerDriver driver, FrameworkID frameworkId, MasterInfo masterInfo) {
     System.out.println("Registered! ID = " + frameworkId.getValue());
   }
 
+  @Override
   public void reregistered(SchedulerDriver driver, MasterInfo masterInfo) {
   }
 
+  @Override
   public void disconnected(SchedulerDriver driver) {
   }
 
+  @Override
   public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
     for (Offer offer : offers) {
       List<TaskInfo> tasks = new ArrayList<TaskInfo>();
@@ -122,9 +126,11 @@ public class RendlerScheduler implements Scheduler {
     }
   }
 
+  @Override
   public void offerRescinded(SchedulerDriver driver, OfferID offerId) {
   }
 
+  @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
 
     if (status.getState() == TaskState.TASK_FINISHED || status.getState() == TaskState.TASK_LOST) {
@@ -146,6 +152,7 @@ public class RendlerScheduler implements Scheduler {
     }
   }
 
+  @Override
   public void frameworkMessage(SchedulerDriver driver, ExecutorID executorId, SlaveID slaveId,
       byte[] data) {
     String childUrlStr = new String(data);
@@ -193,13 +200,16 @@ public class RendlerScheduler implements Scheduler {
     }
   }
 
+  @Override
   public void slaveLost(SchedulerDriver driver, SlaveID slaveId) {
   }
 
+  @Override
   public void executorLost(SchedulerDriver driver, ExecutorID executorId, SlaveID slaveId,
       int status) {
   }
 
+  @Override
   public void error(SchedulerDriver driver, String message) {
     System.out.println("Error: " + message);
   }
