@@ -1,10 +1,34 @@
-import org.apache.mesos.*;
-import org.apache.mesos.Protos.*;
-import java.util.*;
-import java.util.regex.*;
-import java.io.*;
-import java.net.*;
+package com.mesosphere.rendler.scheduler;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.mesos.Protos.ExecutorID;
+import org.apache.mesos.Protos.ExecutorInfo;
+import org.apache.mesos.Protos.FrameworkID;
+import org.apache.mesos.Protos.MasterInfo;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.Protos.Resource;
+import org.apache.mesos.Protos.SlaveID;
+import org.apache.mesos.Protos.TaskID;
+import org.apache.mesos.Protos.TaskInfo;
+import org.apache.mesos.Protos.TaskState;
+import org.apache.mesos.Protos.TaskStatus;
+import org.apache.mesos.Protos.Value;
+import org.apache.mesos.Scheduler;
+import org.apache.mesos.SchedulerDriver;
+
 import com.google.protobuf.ByteString;
+import com.mesosphere.rendler.util.GraphWriter;
 
 public class RendlerScheduler implements Scheduler {
 
@@ -127,6 +151,7 @@ public class RendlerScheduler implements Scheduler {
           + status.getState());
     }
   }
+
   @Override
   public void frameworkMessage(SchedulerDriver driver, ExecutorID executorId, SlaveID slaveId,
       byte[] data) {
@@ -184,6 +209,7 @@ public class RendlerScheduler implements Scheduler {
       int status) {
   }
 
+  @Override
   public void error(SchedulerDriver driver, String message) {
     System.out.println("Error: " + message);
   }
