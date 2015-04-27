@@ -54,7 +54,7 @@ public class RendlerMain {
 
     Scheduler scheduler = args.length == 1
         ? new RendlerScheduler(executorCrawl, executorRender)
-        : new RendlerScheduler(executorCrawl, executorRender, Integer.parseInt(args[1]));
+        : new RendlerScheduler(executorCrawl, executorRender, Integer.parseInt(args[1]), args[2]);
 
     MesosSchedulerDriver driver = null;
     if (System.getenv("MESOS_AUTHENTICATE") != null) {
@@ -93,7 +93,7 @@ public class RendlerMain {
 
   private static void usage() {
     String name = RendlerScheduler.class.getName();
-    System.err.println("Usage: " + name + " master <tasks>");
+    System.err.println("Usage: " + name + " master <tasks> <url>");
   }
 
 }

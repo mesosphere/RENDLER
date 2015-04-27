@@ -42,10 +42,11 @@ public class RendlerScheduler implements Scheduler {
   private Map<String, String> urlToFileNameMap;
 
   public RendlerScheduler(ExecutorInfo executorCrawler, ExecutorInfo executorRender) {
-    this(executorCrawler, executorRender, 5);
+    this(executorCrawler, executorRender, 5, "https://mesosphere.com");
   }
 
-  public RendlerScheduler(ExecutorInfo executorCrawler, ExecutorInfo executorRender, int totalTasks) {
+  public RendlerScheduler(ExecutorInfo executorCrawler, ExecutorInfo executorRender,
+      int totalTasks, String url) {
     this.executorCrawler = executorCrawler;
     this.executorRender = executorRender;
     this.totalTasks = totalTasks;
@@ -53,7 +54,7 @@ public class RendlerScheduler implements Scheduler {
     this.completedCrawlQueue = Collections.synchronizedList(new ArrayList<String>());
     this.edgeList = Collections.synchronizedMap(new HashMap<String, Set<String>>());
     this.urlToFileNameMap = Collections.synchronizedMap(new HashMap<String, String>());
-    this.crawlQueue.add("http://mesosphere.com/");
+    this.crawlQueue.add(url);
 
   }
 
