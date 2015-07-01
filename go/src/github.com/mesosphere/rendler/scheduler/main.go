@@ -1,281 +1,284 @@
 package main
 
 import (
-	"code.google.com/p/goprotobuf/proto"
 	"container/list"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/mesosphere/mesos-go/mesos"
+	"github.com/golang/protobuf/proto"
+	mesos "github.com/mesos/mesos-go/mesosproto"
+	"github.com/mesos/mesos-go/mesosutil"
+	sched "github.com/mesos/mesos-go/scheduler"
 	"github.com/mesosphere/rendler"
 	"log"
 	"os"
 	"os/signal"
-	"time"
 	"path/filepath"
+	"time"
 )
 
-const TASK_CPUS = 0.1
-const TASK_MEM = 32.0
-const SHUTDOWN_TIMEOUT = 30  // in seconds
+const (
+	TASK_CPUS        = 0.1
+	TASK_MEM         = 32.0
+	SHUTDOWN_TIMEOUT = time.Duration(30) * time.Second
+)
 
-func main() {
-	crawlQueue := list.New()  // list of string
-	renderQueue := list.New() // list of string
+var (
+	crawlCommand  = "python crawl_executor.py"
+	renderCommand = "python render_executor.py"
+)
 
-	processedURLs := list.New() // list of string
-	crawlResults := list.New()  // list of CrawlEdge
-	renderResults := make(map[string]string)
+var (
+	DEFAULT_FILTER = &mesos.Filters{RefuseSeconds: proto.Float64(1)}
+)
 
-	seedUrl := flag.String("seed", "http://mesosphere.io", "The first URL to crawl")
-	master := flag.String("master", "127.0.1.1:5050", "Location of leading Mesos master")
-	localMode := flag.Bool("local", true, "If true, saves rendered web pages on local disk")
-	// TODO(nnielsen): Add flag for artifacts.
+func maxTasksForOffer(offer *mesos.Offer) int {
+	// TODO(nnielsen): Parse offer resources.
+	count := 0
 
-	flag.Parse()
+	var cpus float64 = 0
+	var mem float64 = 0
 
-	crawlQueue.PushBack(*seedUrl)
+	for _, resource := range offer.Resources {
+		if resource.GetName() == "cpus" {
+			cpus = *resource.GetScalar().Value
+		}
 
-	tasksCreated := 0
-	tasksRunning := 0
-	shuttingDown := false
-
-	crawlCommand := "python crawl_executor.py"
-	renderCommand := "python render_executor.py"
-
-	if *localMode {
-		renderCommand += " --local"
+		if resource.GetName() == "mem" {
+			mem = *resource.GetScalar().Value
+		}
 	}
 
+	for cpus >= TASK_CPUS && mem >= TASK_MEM {
+		count++
+		cpus -= TASK_CPUS
+		mem -= TASK_MEM
+	}
+
+	return count
+}
+
+type RendlerScheduler struct {
+	tasksCreated int
+	tasksRunning int
+
+	crawlQueue    *list.List
+	renderQueue   *list.List
+	processedURLs *list.List
+	crawlResults  *list.List
+	renderResults map[string]string
+
+	crawlExecutor  *mesos.ExecutorInfo
+	renderExecutor *mesos.ExecutorInfo
+
+	// this channel is closed when the program receives an interrupt,
+	// signalling that the program should shut down.
+	shutdown chan interface{}
+	// this channel is closed when there are no more outstanding tasks,
+	// and that the scheduler does not intend to receive more tasks
+	done chan interface{}
+}
+
+func NewRendlerScheduler(seedUrl string) *RendlerScheduler {
 	// TODO(nnielsen): In local mode, verify artifact locations.
 	rendlerArtifacts := executorURIs()
 
-	crawlExecutor := &mesos.ExecutorInfo{
-		ExecutorId: &mesos.ExecutorID{Value: proto.String("crawl-executor")},
-		Command: &mesos.CommandInfo{
-			Value: proto.String(crawlCommand),
-			Uris:  rendlerArtifacts,
-		},
-		Name: proto.String("Crawler"),
-	}
+	s := &RendlerScheduler{
+		crawlQueue:    list.New(),
+		renderQueue:   list.New(),
+		processedURLs: list.New(),
+		crawlResults:  list.New(),
+		renderResults: make(map[string]string),
 
-	renderExecutor := &mesos.ExecutorInfo{
-		ExecutorId: &mesos.ExecutorID{Value: proto.String("render-executor")},
-		Command: &mesos.CommandInfo{
-			Value: proto.String(renderCommand),
-			Uris:  rendlerArtifacts,
-		},
-		Name: proto.String("Renderer"),
-	}
-
-	makeTaskPrototype := func(offer mesos.Offer) *mesos.TaskInfo {
-		taskId := tasksCreated
-		tasksCreated++
-		return &mesos.TaskInfo{
-			TaskId: &mesos.TaskID{
-				Value: proto.String(fmt.Sprintf("RENDLER-%d", taskId)),
+		crawlExecutor: &mesos.ExecutorInfo{
+			ExecutorId: &mesos.ExecutorID{Value: proto.String("crawl-executor")},
+			Command: &mesos.CommandInfo{
+				Value: proto.String(crawlCommand),
+				Uris:  rendlerArtifacts,
 			},
-			SlaveId: offer.SlaveId,
-			Resources: []*mesos.Resource{
-				mesos.ScalarResource("cpus", TASK_CPUS),
-				mesos.ScalarResource("mem", TASK_MEM),
+			Name: proto.String("Crawler"),
+		},
+
+		renderExecutor: &mesos.ExecutorInfo{
+			ExecutorId: &mesos.ExecutorID{Value: proto.String("render-executor")},
+			Command: &mesos.CommandInfo{
+				Value: proto.String(renderCommand),
+				Uris:  rendlerArtifacts,
 			},
-		}
+			Name: proto.String("Renderer"),
+		},
+
+		shutdown: make(chan interface{}),
+		done:     make(chan interface{}),
 	}
+	s.crawlQueue.PushBack(seedUrl)
+	return s
+}
 
-	makeCrawlTask := func(url string, offer mesos.Offer) *mesos.TaskInfo {
-		task := makeTaskPrototype(offer)
-		task.Name = proto.String("CRAWL_" + *task.TaskId.Value)
-		task.Executor = crawlExecutor
-		task.Data = []byte(url)
-		return task
+func (s *RendlerScheduler) makeTaskPrototype(offer *mesos.Offer) *mesos.TaskInfo {
+	taskId := s.tasksCreated
+	s.tasksCreated++
+	return &mesos.TaskInfo{
+		TaskId: &mesos.TaskID{
+			Value: proto.String(fmt.Sprintf("RENDLER-%d", taskId)),
+		},
+		SlaveId: offer.SlaveId,
+		Resources: []*mesos.Resource{
+			mesosutil.NewScalarResource("cpus", TASK_CPUS),
+			mesosutil.NewScalarResource("mem", TASK_MEM),
+		},
 	}
+}
 
-	makeRenderTask := func(url string, offer mesos.Offer) *mesos.TaskInfo {
-		task := makeTaskPrototype(offer)
-		task.Name = proto.String("RENDER_" + *task.TaskId.Value)
-		task.Executor = renderExecutor
-		task.Data = []byte(url)
-		return task
-	}
+func (s *RendlerScheduler) makeCrawlTask(url string, offer *mesos.Offer) *mesos.TaskInfo {
+	task := s.makeTaskPrototype(offer)
+	task.Name = proto.String("CRAWL_" + *task.TaskId.Value)
+	task.Executor = s.crawlExecutor
+	task.Data = []byte(url)
+	return task
+}
 
-	maxTasksForOffer := func(offer mesos.Offer) int {
-		// TODO(nnielsen): Parse offer resources.
-		count := 0
+func (s *RendlerScheduler) makeRenderTask(url string, offer *mesos.Offer) *mesos.TaskInfo {
+	task := s.makeTaskPrototype(offer)
+	task.Name = proto.String("RENDER_" + *task.TaskId.Value)
+	task.Executor = s.renderExecutor
+	task.Data = []byte(url)
+	return task
+}
 
-		var cpus float64 = 0
-		var mem float64 = 0
+func (s *RendlerScheduler) Registered(
+	driver sched.SchedulerDriver,
+	frameworkId *mesos.FrameworkID,
+	masterInfo *mesos.MasterInfo) {
+	log.Printf("Registered")
+}
 
-		for _, resource := range offer.Resources {
-			if resource.GetName() == "cpus" {
-				cpus = *resource.GetScalar().Value
+func (s *RendlerScheduler) Reregistered(driver sched.SchedulerDriver, masterInfo *mesos.MasterInfo) {
+	log.Println("Framework Re-Registered with Master ", masterInfo)
+}
+
+func (s *RendlerScheduler) Disconnected(sched.SchedulerDriver) {
+	log.Println("Framework disconnected with Master")
+}
+
+func (s *RendlerScheduler) ResourceOffers(driver sched.SchedulerDriver, offers []*mesos.Offer) {
+	log.Printf("Received %d resource offers", len(offers))
+	for _, offer := range offers {
+		select {
+		case <-s.shutdown:
+			log.Println("Shutting down: declining offer on [", offer.Hostname, "]")
+			driver.DeclineOffer(offer.Id, DEFAULT_FILTER)
+			continue
+		default:
+			tasks := []*mesos.TaskInfo{}
+
+			for i := 0; i < maxTasksForOffer(offer)/2; i++ {
+				if s.crawlQueue.Front() != nil {
+					url := s.crawlQueue.Front().Value.(string)
+					s.crawlQueue.Remove(s.crawlQueue.Front())
+					task := s.makeCrawlTask(url, offer)
+					tasks = append(tasks, task)
+				}
+				if s.renderQueue.Front() != nil {
+					url := s.renderQueue.Front().Value.(string)
+					s.renderQueue.Remove(s.renderQueue.Front())
+					task := s.makeRenderTask(url, offer)
+					tasks = append(tasks, task)
+				}
 			}
 
-			if resource.GetName() == "mem" {
-				mem = *resource.GetScalar().Value
+			if len(tasks) == 0 {
+				driver.DeclineOffer(offer.Id, DEFAULT_FILTER)
+			} else {
+				driver.LaunchTasks([]*mesos.OfferID{offer.Id}, tasks, DEFAULT_FILTER)
 			}
 		}
+	}
+}
 
-		for cpus >= TASK_CPUS && mem >= TASK_MEM {
-			count++
-			cpus -= TASK_CPUS
-			mem -= TASK_MEM
+func (s *RendlerScheduler) StatusUpdate(driver sched.SchedulerDriver, status *mesos.TaskStatus) {
+	log.Printf("Received task status [%s] for task [%s]", rendler.NameFor(status.State), *status.TaskId.Value)
+
+	if *status.State == mesos.TaskState_TASK_RUNNING {
+		s.tasksRunning++
+	} else if rendler.IsTerminal(status.State) {
+		s.tasksRunning--
+		if s.tasksRunning == 0 {
+			select {
+			case <-s.shutdown:
+				close(s.done)
+			default:
+			}
 		}
-
-		return count
 	}
+}
 
-	printQueueStatistics := func() {
-		// TODO(nnielsen): Print queue lengths.
-	}
+func (s *RendlerScheduler) FrameworkMessage(
+	driver sched.SchedulerDriver,
+	executorId *mesos.ExecutorID,
+	slaveId *mesos.SlaveID,
+	message string) {
+	log.Println("Getting a framework message")
+	switch *executorId.Value {
+	case *s.crawlExecutor.ExecutorId.Value:
+		log.Print("Received framework message from crawler")
+		var result rendler.CrawlResult
+		err := json.Unmarshal([]byte(message), &result)
+		if err != nil {
+			log.Printf("Error deserializing CrawlResult: [%s]", err)
+		} else {
+			for _, link := range result.Links {
+				edge := rendler.Edge{From: result.URL, To: link}
+				log.Printf("Appending [%s] to crawl results", edge)
+				s.crawlResults.PushBack(edge)
 
-	driver := mesos.SchedulerDriver{
-		Master: *master,
-		Framework: mesos.FrameworkInfo{
-			Name: proto.String("RENDLER"),
-			User: proto.String(""),
-		},
-
-		Scheduler: &mesos.Scheduler{
-
-			Registered: func(
-				driver *mesos.SchedulerDriver,
-				frameworkId mesos.FrameworkID,
-				masterInfo mesos.MasterInfo) {
-				log.Printf("Registered")
-			},
-
-			ResourceOffers: func(driver *mesos.SchedulerDriver, offers []mesos.Offer) {
-				printQueueStatistics()
-
-				for _, offer := range offers {
-					if shuttingDown {
-						fmt.Println("Shutting down: declining offer on [", offer.Hostname, "]")
-						driver.DeclineOffer(offer.Id)
-						continue
-					}
-
-					tasks := []mesos.TaskInfo{}
-
-					for i := 0; i < maxTasksForOffer(offer)/2; i++ {
-						if crawlQueue.Front() != nil {
-							url := crawlQueue.Front().Value.(string)
-							crawlQueue.Remove(crawlQueue.Front())
-							task := makeCrawlTask(url, offer)
-							tasks = append(tasks, *task)
-						}
-						if renderQueue.Front() != nil {
-							url := renderQueue.Front().Value.(string)
-							renderQueue.Remove(renderQueue.Front())
-							task := makeRenderTask(url, offer)
-							tasks = append(tasks, *task)
-						}
-					}
-
-					if len(tasks) == 0 {
-						driver.DeclineOffer(offer.Id)
-					} else {
-						driver.LaunchTasks(offer.Id, tasks)
+				alreadyProcessed := false
+				for e := s.processedURLs.Front(); e != nil && !alreadyProcessed; e = e.Next() {
+					processedURL := e.Value.(string)
+					if link == processedURL {
+						alreadyProcessed = true
 					}
 				}
-			},
 
-			StatusUpdate: func(driver *mesos.SchedulerDriver, status mesos.TaskStatus) {
-				log.Printf("Received task status [%s] for task [%s]", rendler.NameFor(status.State), *status.TaskId.Value)
-
-				if *status.State == mesos.TaskState_TASK_RUNNING {
-					tasksRunning++
-				} else if rendler.IsTerminal(status.State) {
-					tasksRunning--
+				if !alreadyProcessed {
+					log.Printf("Enqueueing [%s]", link)
+					s.crawlQueue.PushBack(link)
+					s.renderQueue.PushBack(link)
+					s.processedURLs.PushBack(link)
 				}
-			},
-
-			FrameworkMessage: func(
-				driver *mesos.SchedulerDriver,
-				executorId mesos.ExecutorID,
-				slaveId mesos.SlaveID,
-				message string) {
-
-				switch *executorId.Value {
-				case *crawlExecutor.ExecutorId.Value:
-					log.Print("Received framework message from crawler")
-					var result rendler.CrawlResult
-					err := json.Unmarshal([]byte(message), &result)
-					if err != nil {
-						log.Printf("Error deserializing CrawlResult: [%s]", err)
-					} else {
-						for _, link := range result.Links {
-							edge := rendler.Edge{From: result.URL, To: link}
-							log.Printf("Appending [%s] to crawl results", edge)
-							crawlResults.PushBack(edge)
-
-							alreadyProcessed := false
-							for e := processedURLs.Front(); e != nil && !alreadyProcessed; e = e.Next() {
-								processedURL := e.Value.(string)
-								if link == processedURL {
-									alreadyProcessed = true
-								}
-							}
-
-							if !alreadyProcessed {
-								log.Printf("Enqueueing [%s]", link)
-								crawlQueue.PushBack(link)
-								renderQueue.PushBack(link)
-								processedURLs.PushBack(link)
-							}
-						}
-					}
-
-				case *renderExecutor.ExecutorId.Value:
-					log.Printf("Received framework message from renderer")
-					var result rendler.RenderResult
-					err := json.Unmarshal([]byte(message), &result)
-					if err != nil {
-						log.Printf("Error deserializing RenderResult: [%s]", err)
-					} else {
-						log.Printf(
-							"Appending [%s] to render results",
-							rendler.Edge{From: result.URL, To: result.ImageURL})
-						renderResults[result.URL] = result.ImageURL
-					}
-
-				default:
-					log.Printf("Received a framework message from some unknown source: %s", *executorId.Value)
-				}
-			},
-		},
-	}
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, os.Kill)
-	go func(c chan os.Signal) {
-		s := <-c
-		fmt.Println("Got signal:", s)
-
-		if s == os.Interrupt {
-			fmt.Println("RENDLER is shutting down")
-			shuttingDown = true
-			wait_started := time.Now()
-			for tasksRunning > 0 && SHUTDOWN_TIMEOUT > int(time.Since(wait_started).Seconds()) {
-				time.Sleep(time.Second)
 			}
-
-			if tasksRunning > 0 {
-				fmt.Println("Shutdown by timeout,", tasksRunning, "task(s) have not completed")
-			}
-
-			driver.Stop(false)
 		}
-	}(c)
 
-	driver.Init()
-	defer driver.Destroy()
+	case *s.renderExecutor.ExecutorId.Value:
+		log.Printf("Received framework message from renderer")
+		var result rendler.RenderResult
+		err := json.Unmarshal([]byte(message), &result)
+		if err != nil {
+			log.Printf("Error deserializing RenderResult: [%s]", err)
+		} else {
+			log.Printf(
+				"Appending [%s] to render results",
+				rendler.Edge{From: result.URL, To: result.ImageURL})
+			s.renderResults[result.URL] = result.ImageURL
+		}
 
-	driver.Start()
-	driver.Join()
-	driver.Stop(false)
-	rendler.WriteDOTFile(crawlResults, renderResults)
-	os.Exit(0)
+	default:
+		log.Printf("Received a framework message from some unknown source: %s", *executorId.Value)
+	}
+}
+
+func (s *RendlerScheduler) OfferRescinded(sched.SchedulerDriver, *mesos.OfferID) {
+	log.Println("OfferRescinded")
+}
+func (s *RendlerScheduler) SlaveLost(sched.SchedulerDriver, *mesos.SlaveID) {
+	log.Println("SlaveLost")
+}
+func (s *RendlerScheduler) ExecutorLost(sched.SchedulerDriver, *mesos.ExecutorID, *mesos.SlaveID, int) {
+	log.Println("ExecutorLost")
+}
+
+func (sched *RendlerScheduler) Error(driver sched.SchedulerDriver, err string) {
+	log.Printf("Receiving an error: %s", err)
 }
 
 func executorURIs() []*mesos.CommandInfo_URI {
@@ -299,4 +302,57 @@ func executorURIs() []*mesos.CommandInfo_URI {
 		pathToURI(baseURI+"python/results.py", false),
 		pathToURI(baseURI+"python/task_state.py", false),
 	}
+}
+
+func main() {
+	seedUrl := flag.String("seed", "http://mesosphere.com", "The first URL to crawl")
+	master := flag.String("master", "127.0.1.1:5050", "Location of leading Mesos master")
+	localMode := flag.Bool("local", true, "If true, saves rendered web pages on local disk")
+	// TODO(nnielsen): Add flag for artifacts.
+
+	flag.Parse()
+
+	if *localMode {
+		renderCommand += " --local"
+	}
+
+	scheduler := NewRendlerScheduler(*seedUrl)
+	driver, err := sched.NewMesosSchedulerDriver(sched.DriverConfig{
+		Master: *master,
+		Framework: &mesos.FrameworkInfo{
+			Name: proto.String("RENDLER"),
+			User: proto.String(""),
+		},
+		Scheduler: scheduler,
+	})
+	if err != nil {
+		log.Printf("Unable to create scheduler driver: %s", err)
+		return
+	}
+
+	// Catch interrupt
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, os.Kill)
+		s := <-c
+		log.Println("Got signal:", s)
+
+		if s == os.Interrupt {
+			log.Println("RENDLER is shutting down")
+			close(scheduler.shutdown)
+
+			select {
+			case <-scheduler.done:
+			case <-time.After(SHUTDOWN_TIMEOUT):
+			}
+			rendler.WriteDOTFile(scheduler.crawlResults, scheduler.renderResults)
+			// we have shut down
+			driver.Stop(false)
+		}
+	}()
+
+	if status, err := driver.Run(); err != nil {
+		log.Printf("Framework stopped with status %s and error: %s\n", status.String(), err.Error())
+	}
+	log.Println("Exiting...")
 }
