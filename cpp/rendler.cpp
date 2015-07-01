@@ -102,7 +102,7 @@ public:
           ";mem:" + stringify<size_t>(MEM_PER_TASK)).get();
 
       size_t maxTasks = 0;
-      while (TASK_RESOURCES <= remaining) {
+      while (remaining.flatten().contains(TASK_RESOURCES)) {
         maxTasks++;
         remaining -= TASK_RESOURCES;
       }
