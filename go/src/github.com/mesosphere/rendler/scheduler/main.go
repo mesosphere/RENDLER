@@ -316,7 +316,7 @@ func main() {
 		Master: *master,
 		Framework: &mesos.FrameworkInfo{
 			Name: proto.String("RENDLER"),
-			User: proto.String("RENDLER"),
+			User: proto.String(""),
 		},
 		Scheduler: scheduler,
 	})
