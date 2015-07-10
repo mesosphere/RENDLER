@@ -5,48 +5,52 @@ import (
 	"fmt"
 )
 
-// The type of crawl results
+// CrawlResult is the result of a crawl operation
 type CrawlResult struct {
 	TaskID string
 	URL    string
 	Links  []string
 }
 
-func (target CrawlResult) FromJson(data []byte) CrawlResult {
-	err := json.Unmarshal(data, &target)
+// FromJSON converts a JSON blob to a CrawlResult
+func (c *CrawlResult) FromJSON(data []byte) error {
+	err := json.Unmarshal(data, c)
 	if err != nil {
-		fmt.Printf("Error deserializing CrawlResult from JSON")
+		return fmt.Errorf("Error deserializing CrawlResult from JSON")
 	}
-	return target
+	return nil
 }
 
-func (source CrawlResult) ToJson() []byte {
-	b, err := json.Marshal(source)
+// ToJSON converts a CrawlResult to a JSON blob
+func (c *CrawlResult) ToJSON() ([]byte, error) {
+	b, err := json.Marshal(c)
 	if err != nil {
-		fmt.Printf("Error serializing CrawlResult to JSON")
+		return nil, fmt.Errorf("Error serializing CrawlResult to JSON")
 	}
-	return b
+	return b, nil
 }
 
-// The type of render results
+// RenderResult is the result of a render operation
 type RenderResult struct {
 	TaskID   string
 	URL      string
 	ImageURL string
 }
 
-func (target RenderResult) FromJson(data []byte) RenderResult {
-	err := json.Unmarshal(data, &target)
+// FromJSON converts a JSON blob to a RenderResult
+func (r *RenderResult) FromJSON(data []byte) error {
+	err := json.Unmarshal(data, r)
 	if err != nil {
-		fmt.Printf("Error deserializing RenderResult from JSON")
+		return fmt.Errorf("Error deserializing RenderResult from JSON")
 	}
-	return target
+	return nil
 }
 
-func (source RenderResult) ToJson() []byte {
-	b, err := json.Marshal(source)
+// ToJSON converts a RenderResult to a JSON blob
+func (r *RenderResult) ToJSON() ([]byte, error) {
+	b, err := json.Marshal(r)
 	if err != nil {
-		fmt.Printf("Error serializing RenderResult to JSON")
+		return nil, fmt.Errorf("Error serializing RenderResult to JSON")
 	}
-	return b
+	return b, nil
 }

@@ -13,6 +13,8 @@ const (
 	output = "result.dot"
 )
 
+// WriteDOTFile writes the crawl and render results in a .dot file
+// The filename defaults to result.dot
 func WriteDOTFile(crawlResults []*Edge, renderResults map[string]string) error {
 	fo, err := os.Create(output)
 	if err != nil {
@@ -35,8 +37,8 @@ func WriteDOTFile(crawlResults []*Edge, renderResults map[string]string) error {
 	for k, v := range renderResults {
 		fmt.Printf("render:%s:%s\n", k, v)
 
-		hash_bytes := sha256.Sum256([]byte(k))
-		hash := hex.EncodeToString(hash_bytes[:32])
+		hashBytes := sha256.Sum256([]byte(k))
+		hash := hex.EncodeToString(hashBytes[:32])
 
 		urlsWithImages[hash] = k
 
@@ -55,20 +57,20 @@ func WriteDOTFile(crawlResults []*Edge, renderResults map[string]string) error {
 
 	for _, e := range crawlResults {
 		from := e.From
-		from_hash_bytes := sha256.Sum256([]byte(from))
-		from_hash := hex.EncodeToString(from_hash_bytes[:32])
+		fromHashBytes := sha256.Sum256([]byte(from))
+		fromHash := hex.EncodeToString(fromHashBytes[:32])
 
 		to := e.To
-		to_hash_bytes := sha256.Sum256([]byte(to))
-		to_hash := hex.EncodeToString(to_hash_bytes[:32])
+		toHashBytes := sha256.Sum256([]byte(to))
+		toHash := hex.EncodeToString(toHashBytes[:32])
 
-		if _, ok := urlsWithImages[to_hash]; !ok {
+		if _, ok := urlsWithImages[toHash]; !ok {
 			continue
 		}
-		if _, ok := urlsWithImages[from_hash]; !ok {
+		if _, ok := urlsWithImages[fromHash]; !ok {
 			continue
 		}
-		_, err = w.WriteString("  X" + from_hash + " -> X" + to_hash + ";\n")
+		_, err = w.WriteString("  X" + fromHash + " -> X" + toHash + ";\n")
 		if err != nil {
 			return err
 		}

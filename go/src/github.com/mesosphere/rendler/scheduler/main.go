@@ -181,7 +181,6 @@ func (s *rendlerScheduler) ResourceOffers(driver sched.SchedulerDriver, offers [
 		}
 
 		tasks := []*mesos.TaskInfo{}
-		// += 2 because we create 2 tasks for each iteration
 		tasksToLaunch := maxTasksForOffer(offer)
 		for tasksToLaunch > 0 {
 			if s.crawlQueue.Front() != nil {

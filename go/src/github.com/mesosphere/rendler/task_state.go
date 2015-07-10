@@ -4,6 +4,7 @@ import (
 	mesos "github.com/mesos/mesos-go/mesosproto"
 )
 
+// NameFor returns the string name for a TaskState.
 func NameFor(state *mesos.TaskState) string {
 	switch *state {
 	case mesos.TaskState_TASK_STAGING:
@@ -25,6 +26,8 @@ func NameFor(state *mesos.TaskState) string {
 	}
 }
 
+// IsTerminal determines if a TaskState is a terminal state, i.e. if it singals
+// that the task has stopped running.
 func IsTerminal(state *mesos.TaskState) bool {
 	switch *state {
 	case mesos.TaskState_TASK_FINISHED,
