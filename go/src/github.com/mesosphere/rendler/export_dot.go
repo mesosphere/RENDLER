@@ -83,6 +83,6 @@ func WriteDOTFile(crawlResults []*Edge, renderResults map[string]string) error {
 		return err
 	}
 
-	fmt.Println("Results written to '%s'", output)
+	fmt.Printf("Results written to '%s'\n", output)
 	return nil
 }

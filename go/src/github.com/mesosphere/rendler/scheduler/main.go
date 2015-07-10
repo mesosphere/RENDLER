@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	TaskCPUs        = 0.1
-	TaskMem         = 32.0
-	ShutdownTimeout = time.Duration(30) * time.Second
+	taskCPUs        = 0.1
+	taskMem         = 32.0
+	shutdownTimeout = time.Duration(30) * time.Second
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	DefaultFilter = &mesos.Filters{RefuseSeconds: proto.Float64(1)}
+	defaultFilter = &mesos.Filters{RefuseSeconds: proto.Float64(1)}
 )
 
 // maxTasksForOffer computes how many tasks can be launched using a given offer
@@ -41,24 +41,24 @@ func maxTasksForOffer(offer *mesos.Offer) int {
 	for _, resource := range offer.Resources {
 		switch resource.GetName() {
 		case "cpus":
-			cpus = *resource.GetScalar().Value
+			cpus += *resource.GetScalar().Value
 		case "mem":
-			mem = *resource.GetScalar().Value
+			mem += *resource.GetScalar().Value
 		}
 	}
 
-	for cpus >= TaskCPUs && mem >= TaskMem {
+	for cpus >= taskCPUs && mem >= taskMem {
 		count++
-		cpus -= TaskCPUs
-		mem -= TaskMem
+		cpus -= taskCPUs
+		mem -= taskMem
 	}
 
 	return count
 }
 
-// RendlerScheduler implements the Scheduler interface and stores
+// rendlerScheduler implements the Scheduler interface and stores
 // the state needed for Rendler to function.
-type RendlerScheduler struct {
+type rendlerScheduler struct {
 	tasksCreated int
 	tasksRunning int
 
@@ -79,20 +79,20 @@ type RendlerScheduler struct {
 	done chan struct{}
 }
 
-// NewRendlerScheduler creates a new scheduler for Rendler.
-func NewRendlerScheduler(seedUrl string, local bool) *RendlerScheduler {
+// newRendlerScheduler creates a new scheduler for Rendler.
+func newRendlerScheduler(seedURL string, local bool) *rendlerScheduler {
 	rendlerArtifacts := executorURIs()
 
-	var actualRenderCommand string = renderCommand
+	actualRenderCommand := renderCommand
 	if local {
-		actualRenderCommand += "--local"
+		actualRenderCommand += " --local"
 	}
-	s := &RendlerScheduler{
+	s := &rendlerScheduler{
 		crawlQueue:    list.New(),
 		renderQueue:   list.New(),
-		processedURLs: make(map[string]struct{}),
-		crawlResults:  make([]*rendler.Edge, 0),
-		renderResults: make(map[string]string),
+		processedURLs: map[string]struct{}{},
+		crawlResults:  []*rendler.Edge{},
+		renderResults: map[string]string{},
 
 		crawlExecutor: &mesos.ExecutorInfo{
 			ExecutorId: &mesos.ExecutorID{Value: proto.String("crawl-executor")},
@@ -115,12 +115,12 @@ func NewRendlerScheduler(seedUrl string, local bool) *RendlerScheduler {
 		shutdown: make(chan struct{}),
 		done:     make(chan struct{}),
 	}
-	s.crawlQueue.PushBack(seedUrl)
-	s.processedURLs[seedUrl] = struct{}{}
+	s.crawlQueue.PushBack(seedURL)
+	s.processedURLs[seedURL] = struct{}{}
 	return s
 }
 
-func (s *RendlerScheduler) newTaskPrototype(offer *mesos.Offer) *mesos.TaskInfo {
+func (s *rendlerScheduler) newTaskPrototype(offer *mesos.Offer) *mesos.TaskInfo {
 	taskID := s.tasksCreated
 	s.tasksCreated++
 	return &mesos.TaskInfo{
@@ -129,13 +129,13 @@ func (s *RendlerScheduler) newTaskPrototype(offer *mesos.Offer) *mesos.TaskInfo 
 		},
 		SlaveId: offer.SlaveId,
 		Resources: []*mesos.Resource{
-			mesosutil.NewScalarResource("cpus", TaskCPUs),
-			mesosutil.NewScalarResource("mem", TaskMem),
+			mesosutil.NewScalarResource("cpus", taskCPUs),
+			mesosutil.NewScalarResource("mem", taskMem),
 		},
 	}
 }
 
-func (s *RendlerScheduler) newCrawlTask(url string, offer *mesos.Offer) *mesos.TaskInfo {
+func (s *rendlerScheduler) newCrawlTask(url string, offer *mesos.Offer) *mesos.TaskInfo {
 	task := s.newTaskPrototype(offer)
 	task.Name = proto.String("CRAWL_" + *task.TaskId.Value)
 	task.Executor = s.crawlExecutor
@@ -143,7 +143,7 @@ func (s *RendlerScheduler) newCrawlTask(url string, offer *mesos.Offer) *mesos.T
 	return task
 }
 
-func (s *RendlerScheduler) newRenderTask(url string, offer *mesos.Offer) *mesos.TaskInfo {
+func (s *rendlerScheduler) newRenderTask(url string, offer *mesos.Offer) *mesos.TaskInfo {
 	task := s.newTaskPrototype(offer)
 	task.Name = proto.String("RENDER_" + *task.TaskId.Value)
 	task.Executor = s.renderExecutor
@@ -151,28 +151,31 @@ func (s *RendlerScheduler) newRenderTask(url string, offer *mesos.Offer) *mesos.
 	return task
 }
 
-func (s *RendlerScheduler) Registered(
-	driver sched.SchedulerDriver,
-	frameworkId *mesos.FrameworkID,
+func (s *rendlerScheduler) Registered(
+	_ sched.SchedulerDriver,
+	frameworkID *mesos.FrameworkID,
 	masterInfo *mesos.MasterInfo) {
-	log.Printf("Framework %s registered with master %s", frameworkId, masterInfo)
+	log.Printf("Framework %s registered with master %s", frameworkID, masterInfo)
 }
 
-func (s *RendlerScheduler) Reregistered(driver sched.SchedulerDriver, masterInfo *mesos.MasterInfo) {
+func (s *rendlerScheduler) Reregistered(_ sched.SchedulerDriver, masterInfo *mesos.MasterInfo) {
 	log.Printf("Framework re-registered with master %s", masterInfo)
 }
 
-func (s *RendlerScheduler) Disconnected(sched.SchedulerDriver) {
+func (s *rendlerScheduler) Disconnected(sched.SchedulerDriver) {
 	log.Println("Framework disconnected with master")
 }
 
-func (s *RendlerScheduler) ResourceOffers(driver sched.SchedulerDriver, offers []*mesos.Offer) {
+func (s *rendlerScheduler) ResourceOffers(driver sched.SchedulerDriver, offers []*mesos.Offer) {
 	log.Printf("Received %d resource offers", len(offers))
 	for _, offer := range offers {
 		select {
 		case <-s.shutdown:
 			log.Println("Shutting down: declining offer on [", offer.Hostname, "]")
-			driver.DeclineOffer(offer.Id, DefaultFilter)
+			driver.DeclineOffer(offer.Id, defaultFilter)
+			if s.tasksRunning == 0 {
+				close(s.done)
+			}
 			continue
 		default:
 		}
@@ -180,30 +183,35 @@ func (s *RendlerScheduler) ResourceOffers(driver sched.SchedulerDriver, offers [
 		tasks := []*mesos.TaskInfo{}
 		// += 2 because we create 2 tasks for each iteration
 		tasksToLaunch := maxTasksForOffer(offer)
-		for i := 0; i < tasksToLaunch; i += 2 {
+		for tasksToLaunch > 0 {
 			if s.crawlQueue.Front() != nil {
 				url := s.crawlQueue.Front().Value.(string)
 				s.crawlQueue.Remove(s.crawlQueue.Front())
 				task := s.newCrawlTask(url, offer)
 				tasks = append(tasks, task)
+				tasksToLaunch--
 			}
 			if s.renderQueue.Front() != nil {
 				url := s.renderQueue.Front().Value.(string)
 				s.renderQueue.Remove(s.renderQueue.Front())
 				task := s.newRenderTask(url, offer)
 				tasks = append(tasks, task)
+				tasksToLaunch--
+			}
+			if s.crawlQueue.Front() == nil && s.renderQueue.Front() == nil {
+				break
 			}
 		}
 
 		if len(tasks) == 0 {
-			driver.DeclineOffer(offer.Id, DefaultFilter)
+			driver.DeclineOffer(offer.Id, defaultFilter)
 		} else {
-			driver.LaunchTasks([]*mesos.OfferID{offer.Id}, tasks, DefaultFilter)
+			driver.LaunchTasks([]*mesos.OfferID{offer.Id}, tasks, defaultFilter)
 		}
 	}
 }
 
-func (s *RendlerScheduler) StatusUpdate(driver sched.SchedulerDriver, status *mesos.TaskStatus) {
+func (s *rendlerScheduler) StatusUpdate(driver sched.SchedulerDriver, status *mesos.TaskStatus) {
 	log.Printf("Received task status [%s] for task [%s]", rendler.NameFor(status.State), *status.TaskId.Value)
 
 	if *status.State == mesos.TaskState_TASK_RUNNING {
@@ -220,14 +228,14 @@ func (s *RendlerScheduler) StatusUpdate(driver sched.SchedulerDriver, status *me
 	}
 }
 
-func (s *RendlerScheduler) FrameworkMessage(
+func (s *rendlerScheduler) FrameworkMessage(
 	driver sched.SchedulerDriver,
-	executorId *mesos.ExecutorID,
-	slaveId *mesos.SlaveID,
+	executorID *mesos.ExecutorID,
+	slaveID *mesos.SlaveID,
 	message string) {
 
 	log.Println("Getting a framework message")
-	switch *executorId.Value {
+	switch *executorID.Value {
 	case *s.crawlExecutor.ExecutorId.Value:
 		log.Print("Received framework message from crawler")
 		var result rendler.CrawlResult
@@ -259,25 +267,26 @@ func (s *RendlerScheduler) FrameworkMessage(
 		}
 		log.Printf(
 			"Appending [%s] to render results",
-			rendler.Edge{From: result.URL, To: result.ImageURL})
+			rendler.Edge{From: result.URL, To: result.ImageURL},
+		)
 		s.renderResults[result.URL] = result.ImageURL
 
 	default:
-		log.Printf("Received a framework message from some unknown source: %s", *executorId.Value)
+		log.Printf("Received a framework message from some unknown source: %s", *executorID.Value)
 	}
 }
 
-func (s *RendlerScheduler) OfferRescinded(driver sched.SchedulerDriver, offerID *mesos.OfferID) {
+func (s *rendlerScheduler) OfferRescinded(_ sched.SchedulerDriver, offerID *mesos.OfferID) {
 	log.Printf("Offer %s rescinded", offerID)
 }
-func (s *RendlerScheduler) SlaveLost(driver sched.SchedulerDriver, slaveID *mesos.SlaveID) {
+func (s *rendlerScheduler) SlaveLost(_ sched.SchedulerDriver, slaveID *mesos.SlaveID) {
 	log.Printf("Slave %s lost", slaveID)
 }
-func (s *RendlerScheduler) ExecutorLost(driver sched.SchedulerDriver, executorID *mesos.ExecutorID, slaveID *mesos.SlaveID, status int) {
+func (s *rendlerScheduler) ExecutorLost(_ sched.SchedulerDriver, executorID *mesos.ExecutorID, slaveID *mesos.SlaveID, status int) {
 	log.Printf("Executor %s on slave %s was lost", executorID, slaveID)
 }
 
-func (sched *RendlerScheduler) Error(driver sched.SchedulerDriver, err string) {
+func (s *rendlerScheduler) Error(_ sched.SchedulerDriver, err string) {
 	log.Printf("Receiving an error: %s", err)
 }
 
@@ -305,13 +314,13 @@ func executorURIs() []*mesos.CommandInfo_URI {
 }
 
 func main() {
-	seedUrl := flag.String("seed", "http://mesosphere.com", "The first URL to crawl")
+	seedURL := flag.String("seed", "http://mesosphere.com", "The first URL to crawl")
 	master := flag.String("master", "127.0.1.1:5050", "Location of leading Mesos master")
 	localMode := flag.Bool("local", true, "If true, saves rendered web pages on local disk")
 
 	flag.Parse()
 
-	scheduler := NewRendlerScheduler(*seedUrl, *localMode)
+	scheduler := newRendlerScheduler(*seedURL, *localMode)
 	driver, err := sched.NewMesosSchedulerDriver(sched.DriverConfig{
 		Master: *master,
 		Framework: &mesos.FrameworkInfo{
@@ -330,7 +339,6 @@ func main() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, os.Kill)
 		s := <-c
-		log.Println("Got signal:", s)
 		if s != os.Interrupt {
 			return
 		}
@@ -340,7 +348,7 @@ func main() {
 
 		select {
 		case <-scheduler.done:
-		case <-time.After(ShutdownTimeout):
+		case <-time.After(shutdownTimeout):
 		}
 
 		if err := rendler.WriteDOTFile(scheduler.crawlResults, scheduler.renderResults); err != nil {
