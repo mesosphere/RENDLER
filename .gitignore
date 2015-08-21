@@ -7,3 +7,7 @@ go/src/code.google.com/
 go/pkg/
 go/bin/
 haskell/dist
+java/.classpath
+java/.project
+java/.settings
+java/target
