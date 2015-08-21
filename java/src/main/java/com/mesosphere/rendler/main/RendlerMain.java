@@ -14,7 +14,7 @@ import com.mesosphere.rendler.scheduler.RendlerScheduler;
 
 public class RendlerMain {
   public static void main(String[] args) throws Exception {
-    if (args.length < 1 || args.length > 2) {
+    if (args.length < 1 || args.length > 3) {
       usage();
       System.exit(1);
     }
