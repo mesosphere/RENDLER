@@ -157,10 +157,13 @@ public:
     if (tasksFinished == tasksLaunched &&
         crawlQueue.empty() &&
         renderQueue.empty()) {
-      // Wait to receive any pending framework messages
-      // If some framework messages are lost, it may hang indefinitely.
-      while (frameworkMessagesReceived != tasksFinished) {
-        sleep(1);
+      // We don't wait to receive pending framework messages, if any. Framework
+      // messages are not reliable, so we can't easily recover dropped messages
+      // anyway.
+      int missing_messages = tasksFinished - frameworkMessagesReceived;
+      if (missing_messages > 0) {
+        cout << "Noticed that " << missing_messages
+             << " framework messages were not received" << endl;
       }
       shutdown();
       driver->stop();
