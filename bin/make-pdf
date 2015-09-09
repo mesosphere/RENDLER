@@ -3,5 +3,7 @@ set -o errexit -o nounset -o pipefail
 
 RENDLER_HOME=${RENDLER_HOME:="$( cd "$( dirname "$0" )/.." && pwd )"}
 
+die() { echo "$@" 1>&2 ; exit 1; }
+
 echo "Generating '$RENDLER_HOME/result.pdf'"
 dot -Tpdf "$RENDLER_HOME/result.dot" > "$RENDLER_HOME/result.pdf" || die "Error generating pdf"
