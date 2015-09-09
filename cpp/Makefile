@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -g -O2 -pthread -std=c++0x
+CXXFLAGS = -Wall -g -O2 -pthread -std=c++0x
 LDFLAGS += -lmesos -lpthread -lprotobuf
 CXXCOMPILE = $(CXX) $(INCLUDES) $(CXXFLAGS) -c -o $@
 CXXLINK = $(CXX) $(INCLUDES) $(CXXFLAGS) -o $@

@@ -42,13 +42,6 @@ struct TaskLaunchInfo {
   TaskInfo       *task;
 };
 
-static int writer(char *data, size_t size, size_t nmemb, string *writerData)
-{
-  assert(writerData != NULL);
-  writerData->append(data, size*nmemb);
-  return size * nmemb;
-}
-
 static void runTask(ExecutorDriver* driver, const TaskInfo& task)
 {
   string url = task.data();
