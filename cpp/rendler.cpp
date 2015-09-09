@@ -55,7 +55,7 @@ static size_t nextUrlId = 0;
 MesosSchedulerDriver* schedulerDriver;
 
 static void shutdown();
-static void SIGINTHandler();
+static void SIGINTHandler(int signum);
 
 class Rendler : public Scheduler
 {
