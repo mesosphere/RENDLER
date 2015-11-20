@@ -1,6 +1,8 @@
 CXX = g++
 CXXFLAGS = -Wall -g -O2 -pthread -std=c++0x
-LDFLAGS += -lmesos -lpthread -lprotobuf
+INCLUDES=-I$(MESOS_INSTALL)/include
+LIBRARY_PATH=$(MESOS_INSTALL)/lib
+LDFLAGS += -L$(LIBRARY_PATH) -lmesos -lpthread -lprotobuf
 CXXCOMPILE = $(CXX) $(INCLUDES) $(CXXFLAGS) -c -o $@
 CXXLINK = $(CXX) $(INCLUDES) $(CXXFLAGS) -o $@
 

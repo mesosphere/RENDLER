@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <assert.h>
+#include <libgen.h>
 #include <curl/curl.h>
 #include <boost/regex.hpp>
 
