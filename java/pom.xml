@@ -51,7 +51,7 @@
             <url>http://downloads.mesosphere.io/maven</url>
         </repository>
     </repositories>
-    <dependencies>     
+    <dependencies>   
         <dependency>
             <groupId>org.apache.mesos</groupId>
             <artifactId>mesos</artifactId>
